@@ -1,8 +1,4 @@
 
-
-#include <cctype>
-#include <iostream>
-
 #include "lexer/lexer.hpp"
 #include "lexer/token.hpp"
 
@@ -164,12 +160,12 @@ auto Lexer::parse_identifier(char chr) -> Token {
   while (std::isalnum(_source.peek_char()) && !_source.eof()) {
     value += _source.next_char();
   }
-
-  if (is_keyword(value)) {
-    return Token(Token::Type::KEYWORD, value);
+  auto type = replace_keyword_type(value);
+  if (type == Token::Type::IDENTIFIER) {
+    return Token(type, value);
   }
 
-  return Token(Token::Type::IDENTIFIER, value);
+  return Token(type, "");
 }
 
 auto Lexer::parse_number(char chr) -> Token {
@@ -196,9 +192,21 @@ auto Lexer::is_keyword(const std::string& value) -> bool {
   return keywords().find(value) != keywords().end();
 }
 
-auto Lexer::keywords() -> const std::set<std::string>& {
-  static const std::set<std::string> KEYWORDS{"if", "else", "for", "while", "return"};
-  return KEYWORDS;
+auto Lexer::replace_keyword_type(const std::string& value) -> Token::Type {
+  auto iter = keywords().find(value);
+  if (iter != keywords().end()) {
+    return iter->second;
+  }
+
+  return Token::Type::IDENTIFIER;
 }
 
+auto Lexer::keywords() -> const std::map<std::string, Token::Type>& {
+  static const std::map<std::string, Token::Type> KEYWORDS{{"if", Token::Type::IF},
+                                                           {"else", Token::Type::ELSE},
+                                                           {"for", Token::Type::FOR},
+                                                           {"while", Token::Type::WHILE},
+                                                           {"return", Token::Type::RETURN}};
+  return KEYWORDS;
+}
 }  // namespace kuso

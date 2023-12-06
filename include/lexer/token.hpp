@@ -1,13 +1,24 @@
 #pragma once
 
+#include <belt/class_macros.hpp>
 #include <string>
 #include <unordered_map>
 
 namespace kuso {
 struct Token {
+  DEFAULT_CONSTRUCTIBLE(Token)
+  DEFAULT_COPYABLE(Token)
+  DEFAULT_DESTRUCTIBLE(Token)
+  DEFAULT_MOVABLE(Token)
+
   enum class Type {
     IDENTIFIER,
     KEYWORD,
+    RETURN,
+    IF,
+    ELSE,
+    FOR,
+    WHILE,
     OPERATOR,
     NUMBER,
     STRING,
@@ -57,6 +68,11 @@ inline auto to_string(const Token& token) -> std::string {
   static const std::unordered_map<Token::Type, std::string> TYPE_MAP{
       {Token::Type::IDENTIFIER, "IDENTIFIER"},
       {Token::Type::KEYWORD, "KEYWORD"},
+      {Token::Type::RETURN, "RETURN"},
+      {Token::Type::IF, "IF"},
+      {Token::Type::ELSE, "ELSE"},
+      {Token::Type::FOR, "FOR"},
+      {Token::Type::WHILE, "WHILE"},
       {Token::Type::OPERATOR, "OPERATOR"},
       {Token::Type::NUMBER, "NUMBER"},
       {Token::Type::STRING, "STRING"},
@@ -95,10 +111,10 @@ inline auto to_string(const Token& token) -> std::string {
   auto type = TYPE_MAP.find(token.type);
 
   if (type == TYPE_MAP.end()) {
-    return "Token { type: UNKNOWN value: " + token.value + "}\n";
+    return "Token { type: UNKNOWN value: " + token.value + "}";
   }
 
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-  return "Token { type: " + type->second + " value: " + token.value + "}\n";
+  return "Token { type: " + type->second + " value: " + token.value + "}";
 }
 }  // namespace kuso

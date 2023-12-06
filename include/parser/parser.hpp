@@ -22,21 +22,20 @@ class Parser {
 
  private:
   Lexer _lexer;
-  AST   _ast;
 
-  Token _curr;
   Token _lookahead;
 
-  void match(Token::Type, Tokens&);
-  void consume(Tokens&);
+  auto match(Token::Type, Tokens&) -> Token;
+  auto consume(Tokens&) -> Token;
 
-  static void syntax_error(const Token&, const Token&);
+  [[noreturn]] static void syntax_error(const Token&, const Token&);
 
   [[nodiscard]] auto parse_statement(Tokens&) -> AST::Statement;
   [[nodiscard]] auto parse_expression(Token&, Tokens&) -> std::unique_ptr<AST::Expression>;
+  [[nodiscard]] auto parse_assignment(Token&, Tokens&) -> std::unique_ptr<AST::Assignment>;
   [[nodiscard]] auto parse_push(Token&, Tokens&) -> std::unique_ptr<AST::Push>;
+  [[nodiscard]] auto parse_return(Tokens&) -> std::unique_ptr<AST::Return>;
   [[nodiscard]] auto parse_declaration(Token&, Tokens&) -> std::unique_ptr<AST::Declaration>;
-  [[nodiscard]] auto parse_binary_expression(Token&, Token&, Tokens&)
-      -> std::unique_ptr<AST::BinaryExpression>;
+  [[nodiscard]] auto parse_binary_expression(Token&, Tokens&) -> std::unique_ptr<AST::BinaryExpression>;
 };
 }  // namespace kuso

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <filesystem>
-#include <set>
+#include <map>
 
 #include <belt/class_macros.hpp>
 #include <belt/file.hpp>
@@ -29,7 +29,8 @@ class Lexer {
   belt::File _source;
 
   [[nodiscard]] static auto is_keyword(const std::string&) -> bool;
-  [[nodiscard]] static auto keywords() -> const std::set<std::string>&;
+  [[nodiscard]] static auto keywords() -> const std::map<std::string, Token::Type>&;
+  [[nodiscard]] static auto replace_keyword_type(const std::string&) -> Token::Type;
 
   [[nodiscard]] auto skip_comments() -> char;
   [[nodiscard]] auto parse_identifier(char) -> Token;
