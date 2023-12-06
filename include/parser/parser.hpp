@@ -11,6 +11,8 @@ class Parser {
   DEFAULT_DESTRUCTIBLE(Parser)
   DEFAULT_MOVABLE(Parser)
 
+  using Tokens = belt::Generator<Token>;
+
  public:
   explicit Parser(const std::filesystem::path& source) : _lexer(source) {}
 
@@ -20,6 +22,9 @@ class Parser {
   Lexer _lexer;
   AST   _ast;
 
-  void syntax_error(const Token&, const std::string&);
+  static void syntax_error(const Token&, const Token&);
+
+  void parse_statement(Tokens&);
+  void parse_expression(Token, Tokens&);
 };
 }  // namespace kuso

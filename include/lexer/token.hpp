@@ -53,7 +53,7 @@ struct Token {
   explicit Token(Type type, std::string value = "") noexcept : type(type), value(std::move(value)) {}
 };
 
-inline void print_token(const Token& token) {
+inline auto to_string(const Token& token) -> std::string {
   static const std::unordered_map<Token::Type, std::string> TYPE_MAP{
       {Token::Type::IDENTIFIER, "IDENTIFIER"},
       {Token::Type::KEYWORD, "KEYWORD"},
@@ -95,12 +95,10 @@ inline void print_token(const Token& token) {
   auto type = TYPE_MAP.find(token.type);
 
   if (type == TYPE_MAP.end()) {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-    printf("Token { type: UNKNOWN, value: %s }\n", token.value.c_str());
-    return;
+    return "Token { type: UNKNOWN value: " + token.value + "}\n";
   }
 
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-  printf("Token { type: %s, value: %s }\n", type->second.c_str(), token.value.c_str());
+  return "Token { type: " + type->second + " value: " + token.value + "}\n";
 }
 }  // namespace kuso

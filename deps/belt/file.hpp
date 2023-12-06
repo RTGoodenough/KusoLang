@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 
 #include "class_macros.hpp"
 #include "generator.hpp"
@@ -16,6 +17,8 @@ class File {
  public:
   explicit File(const std::filesystem::path& path, const std::ios::openmode& mode = std::ios::in)
       : _path(path), _mode(mode), _file(path, mode) {}
+
+  [[nodiscard]] auto is_open() const noexcept -> bool { return _file.is_open(); }
 
   [[nodiscard]] auto eof() const -> bool { return _file.eof(); }
   [[nodiscard]] auto peek_char() -> int { return _file.peek(); }

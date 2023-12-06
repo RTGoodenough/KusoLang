@@ -9,6 +9,8 @@ class AST {
   DEFAULT_DESTRUCTIBLE(AST)
   DEFAULT_MOVABLE(AST)
  public:
+  void add_expression();
+
  private:
 };
 }  // namespace kuso

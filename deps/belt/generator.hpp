@@ -34,6 +34,19 @@ class Generator {
 
   constexpr auto end() noexcept -> sentinel { return {}; }
 
+  [[nodiscard]] constexpr auto next() noexcept -> Promise<data_t>::reference_t {
+    _handle.resume();
+    return _handle.promise().value();
+  }
+
+  [[nodiscard]] constexpr auto has_next() -> bool {
+    if (_handle) {
+      return !_handle.done();
+    }
+
+    return false;
+  }
+
  private:
   handle_t _handle;
 
