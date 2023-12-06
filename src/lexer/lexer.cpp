@@ -197,12 +197,7 @@ auto Lexer::is_keyword(const std::string& value) -> bool {
 }
 
 auto Lexer::keywords() -> const std::set<std::string>& {
-  static const std::set<std::string> KEYWORDS{
-      "if",
-      "else",
-      "for",
-      "while",
-  };
+  static const std::set<std::string> KEYWORDS{"if", "else", "for", "while", "return"};
   return KEYWORDS;
 }
 

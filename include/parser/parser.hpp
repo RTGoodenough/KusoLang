@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "lexer/lexer.hpp"
 #include "parser/ast.hpp"
 
@@ -22,9 +24,19 @@ class Parser {
   Lexer _lexer;
   AST   _ast;
 
+  Token _curr;
+  Token _lookahead;
+
+  void match(Token::Type, Tokens&);
+  void consume(Tokens&);
+
   static void syntax_error(const Token&, const Token&);
 
-  void parse_statement(Tokens&);
-  void parse_expression(Token, Tokens&);
+  [[nodiscard]] auto parse_statement(Tokens&) -> AST::Statement;
+  [[nodiscard]] auto parse_expression(Token&, Tokens&) -> std::unique_ptr<AST::Expression>;
+  [[nodiscard]] auto parse_push(Token&, Tokens&) -> std::unique_ptr<AST::Push>;
+  [[nodiscard]] auto parse_declaration(Token&, Tokens&) -> std::unique_ptr<AST::Declaration>;
+  [[nodiscard]] auto parse_binary_expression(Token&, Token&, Tokens&)
+      -> std::unique_ptr<AST::BinaryExpression>;
 };
 }  // namespace kuso
