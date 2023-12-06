@@ -13,12 +13,12 @@ class Lexer {
   NON_COPYABLE(Lexer)
 
   DEFAULT_DESTRUCTIBLE(Lexer)
-  MOVABLE(Lexer)
+  DEFAULT_MOVABLE(Lexer)
 
  public:
   explicit Lexer(const std::filesystem::path& path) : _source(path, std::ios::in) {}
 
-  [[nodiscard]] auto by_token() -> belt::Generator<Token>;
+  [[nodiscard]] auto by_token() -> belt::Generator<std::pair<Token, Token>>;
 
  private:
   belt::File _source;
@@ -28,5 +28,6 @@ class Lexer {
   [[nodiscard]] auto parse_identifier(char) -> Token;
   [[nodiscard]] auto parse_number(char) -> Token;
   [[nodiscard]] auto parse_string(char) -> Token;
+  [[nodiscard]] auto parse_token() -> Token;
 };
 }  // namespace kuso

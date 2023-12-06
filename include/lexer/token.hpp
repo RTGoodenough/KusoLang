@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 
+namespace kuso {
 struct Token {
   enum class Type {
     IDENTIFIER,
@@ -102,3 +103,4 @@ inline void print_token(const Token& token) {
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
   printf("Token { type: %s, value: %s }\n", type->second.c_str(), token.value.c_str());
 }
+}  // namespace kuso

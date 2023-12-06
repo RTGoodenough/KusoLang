@@ -1,9 +1,9 @@
 
-#include "lexer/lexer.hpp"
+#include "parser/parser.hpp"
 
 auto main() -> int {
-  auto lexer = kuso::Lexer("temp/test.kuso");
-  for (const auto& token : lexer.by_token()) {
-    print_token(token);
-  }
+  kuso::Parser parser("test.kuso");
+  auto         ast = parser.parse();
+
+  return 0;
 }

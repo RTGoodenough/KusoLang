@@ -10,7 +10,8 @@ Checks: >
   -hicpp-*,
   -readability-braces-around-statements,
   -cppcoreguidelines-pro-type-union-access,
-  -misc-no-recursion
+  -misc-no-recursion,
+  -google-readability-braces-around-statements,
 
 WarningsAsErrors: "*"
 
