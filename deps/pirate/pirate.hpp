@@ -60,7 +60,7 @@ class Args {
       throw std::runtime_error(fullError + ": " += flag);
     }
 
-    check_required(get_args());
+    check_required();
   }
   /**
    * @brief Adds an argument flag that can be accepted
@@ -70,12 +70,23 @@ class Args {
   static void register_arg(const std::string& key) { get_arg_map()[key] = ArgType::OPTIONAL; }
 
   /**
-   * @brief Adds an argument flag that can be accepted, and marks it required
+   * @brief Adds an argument flag that can be accepted, and sets its type
    * 
    * @param key : argument key to add
    * @param type : argument type
    */
   static void register_arg(const std::string& key, ArgType type) { get_arg_map()[key] = type; }
+
+  /**
+   * @brief Adds an argument flag that can be accepted, sets its type and provides a default value
+   * 
+   * @param key : argument key to add
+   * @param type : argument type
+   */
+  static void register_arg(const std::string& key, const std::string& defaultValue, ArgType type) {
+    get_arg_map()[key] = type;
+    get_defaults()[key] = defaultValue;
+  }
 
   /**
    * @brief Returns true if the argument is present
@@ -84,7 +95,13 @@ class Args {
    * @return true 
    * @return false 
    */
-  static auto has(std::string_view key) -> bool { return get_args().find(key) != get_args().end(); }
+  static auto has(std::string_view key) -> bool {
+    if (get_defaults().find(key) != get_defaults().end()) {
+      return true;
+    }
+
+    return get_args().find(key) != get_args().end();
+  }
 
   /**
    * @brief Returns the argument with the given key
@@ -94,8 +111,12 @@ class Args {
    */
   static auto get(std::string_view key) -> const std::string& {
     auto iter = get_args().find(key);
-    if (iter == get_args().end())
-      throw std::out_of_range("Attempt To Access Missing Argument:" + std::string(key));
+    if (iter == get_args().end()) {
+      iter = get_defaults().find(key);
+      if (iter == get_defaults().end())
+        throw std::out_of_range("Attempt To Access Missing Argument:" + std::string(key));
+    }
+
     return iter->second;
   }
 
@@ -179,9 +200,9 @@ class Args {
    * 
    * @param args : arguments map
    */
-  static void check_required(const ArgsMap& args) {
+  static void check_required() {
     for (const auto& arg : get_req_set()) {
-      if (args.find(arg) == args.end()) throw std::runtime_error("Missing Flag: " + arg);
+      if (!has(arg)) throw std::runtime_error("Missing Flag: " + arg);
     }
   }
 
@@ -209,6 +230,11 @@ class Args {
   static inline auto get_args() -> ArgsMap& {
     static ArgsMap args;
     return args;
+  }
+
+  static inline auto get_defaults() -> ArgsMap& {
+    static ArgsMap defaults{};
+    return defaults;
   }
 
  public:
