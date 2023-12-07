@@ -2,6 +2,8 @@
 
 #include <belt/class_macros.hpp>
 #include <belt/file.hpp>
+#include <memory>
+#include "generator/emitter.hpp"
 #include "parser/ast.hpp"
 namespace kuso {
 class Generator {
@@ -17,7 +19,8 @@ class Generator {
   void generate(const AST&);
 
  private:
-  belt::File _output;
+  belt::File               _output;
+  std::unique_ptr<Emitter> _emitter;
 
   void output_setup();
 };

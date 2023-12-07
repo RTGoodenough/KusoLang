@@ -67,7 +67,9 @@
   NON_COPYABLE(T)    \
   NON_MOVABLE(T);
 
-#define VIRTUAL(T) \
- public:           \
-  T() = default;   \
+#define VIRTUAL(T)         \
+ public:                   \
+  DEFAULT_CONSTRUCTIBLE(T) \
+  DEFAULT_COPYABLE(T)      \
+  DEFAULT_MOVABLE(T)       \
   virtual ~T() = default;
