@@ -19,7 +19,6 @@ class File {
       : _path(path), _mode(mode), _file(path, mode) {}
 
   [[nodiscard]] auto is_open() const noexcept -> bool { return _file.is_open(); }
-
   [[nodiscard]] auto eof() const -> bool { return _file.eof(); }
   [[nodiscard]] auto peek_char() -> int { return _file.peek(); }
   [[nodiscard]] auto next_char() -> char {
@@ -28,6 +27,9 @@ class File {
     _eof = _file.eof();
     return chr;
   }
+
+  void write(const std::string& str) { _file << str; }
+  void write(char chr) { _file << chr; }
 
   [[nodiscard]] auto by_char() -> belt::Generator<char> {
     char chr = '\0';

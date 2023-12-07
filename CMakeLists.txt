@@ -29,15 +29,23 @@ add_executable(
 
 add_subdirectory(${src_dir})
 
+
 target_include_directories(
   ${PROJECT_NAME}
   PRIVATE
   ${include_dir}
 )
-
+  
 include_directories(
   SYSTEM
   ${deps_dir}
+)
+    
+add_subdirectory(${deps_dir}/pirate pirate)
+target_link_libraries(
+  ${PROJECT_NAME}
+  PRIVATE
+  pirate
 )
 
 target_compile_options(

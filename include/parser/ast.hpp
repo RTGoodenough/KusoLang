@@ -18,22 +18,13 @@ class AST {
   NON_COPYABLE(AST)
 
  public:
-  enum class Operator {
+  enum class BinaryOp {
     ADD,
     SUB,
     MUL,
     DIV,
     MOD,
     POW,
-  };
-
-  enum class BinaryOp {
-    PLUS,
-    MINUS,
-    ASTERISK,
-    SLASH,
-    PERCENT,
-    CARET,
   };
   struct Terminal {
     Token token;
@@ -151,8 +142,8 @@ class AST {
 
   static auto to_char(BinaryOp type) -> char {
     static const std::unordered_map<BinaryOp, char> OPERATORS{
-        {BinaryOp::PLUS, '+'},  {BinaryOp::MINUS, '-'},   {BinaryOp::ASTERISK, '*'},
-        {BinaryOp::SLASH, '/'}, {BinaryOp::PERCENT, '%'}, {BinaryOp::CARET, '^'},
+        {BinaryOp::ADD, '+'}, {BinaryOp::SUB, '-'}, {BinaryOp::MUL, '*'},
+        {BinaryOp::DIV, '/'}, {BinaryOp::MOD, '%'}, {BinaryOp::POW, '^'},
     };
     auto oper = OPERATORS.find(type);
     if (oper == OPERATORS.end()) {

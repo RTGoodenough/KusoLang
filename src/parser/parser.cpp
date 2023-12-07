@@ -37,9 +37,18 @@ auto Parser::parse_statement(Tokens& tokens) -> AST::Statement {
   AST::Statement statement{nullptr};
   auto           token = consume(tokens);
 
+  std::optional<std::unique_ptr<AST::Declaration>> decl;
+
   switch (token.type) {
     case Token::Type::IDENTIFIER:
-      statement.statement = parse_assignment(token, tokens);
+      if (_lookahead.type == Token::Type::COLON) {
+        decl = parse_declaration(token, tokens);
+      }
+      if (_lookahead.type == Token::Type::EQUAL) {
+        statement.statement = parse_assignment(token, std::move(decl), tokens);
+        break;
+      }
+      if (decl) statement.statement = std::move(decl.value());
       break;
     case Token::Type::RETURN:
       statement.statement = parse_return(tokens);
@@ -71,21 +80,24 @@ auto Parser::parse_expression(Token& token, Tokens& tokens) -> std::unique_ptr<A
       break;
   }
 
-  printf("lookahead: %s\n", to_string(_lookahead).c_str());
-
   expression->value = std::make_unique<AST::Terminal>(token);
   return expression;
 }
 
-auto Parser::parse_assignment(Token& dest, Tokens& tokens) -> std::unique_ptr<AST::Assignment> {
+auto Parser::parse_assignment(Token& dest, std::optional<std::unique_ptr<AST::Declaration>> decl,
+                              Tokens& tokens) -> std::unique_ptr<AST::Assignment> {
   auto assignment = std::make_unique<AST::Assignment>();
-  if (_lookahead.type == Token::Type::COLON)
-    assignment->dest = parse_declaration(dest, tokens);
+
+  if (decl.has_value())
+    assignment->dest = std::move(decl.value());
   else
     assignment->dest = std::make_unique<AST::Terminal>(dest);
+
   match(Token::Type::EQUAL, tokens);
   dest = consume(tokens);
+
   assignment->value = parse_expression(dest, tokens);
+
   return assignment;
 }
 
@@ -95,9 +107,12 @@ auto Parser::parse_push(Token&, Tokens&) -> std::unique_ptr<AST::Push> {
 
 auto Parser::parse_declaration(Token& dest, Tokens& tokens) -> std::unique_ptr<AST::Declaration> {
   std::unique_ptr<AST::Declaration> declaration = std::make_unique<AST::Declaration>();
+
   declaration->name = std::make_unique<AST::Terminal>(dest);
+
   match(Token::Type::COLON, tokens);
   dest = match(Token::Type::IDENTIFIER, tokens);
+
   declaration->type = std::make_unique<AST::Terminal>(dest);
   return declaration;
 }
@@ -108,22 +123,22 @@ auto Parser::parse_binary_expression(Token& token, Tokens& tokens) -> std::uniqu
   expression->left = std::make_unique<AST::Expression>(std::make_unique<AST::Terminal>(token));
   switch (_lookahead.type) {
     case Token::Type::PLUS:
-      expression->op = AST::BinaryOp::PLUS;
+      expression->op = AST::BinaryOp::ADD;
       break;
     case Token::Type::MINUS:
-      expression->op = AST::BinaryOp::MINUS;
+      expression->op = AST::BinaryOp::SUB;
       break;
     case Token::Type::ASTERISK:
-      expression->op = AST::BinaryOp::ASTERISK;
+      expression->op = AST::BinaryOp::MUL;
       break;
     case Token::Type::SLASH:
-      expression->op = AST::BinaryOp::SLASH;
+      expression->op = AST::BinaryOp::DIV;
       break;
     case Token::Type::PERCENT:
-      expression->op = AST::BinaryOp::PERCENT;
+      expression->op = AST::BinaryOp::MOD;
       break;
     case Token::Type::CARET:
-      expression->op = AST::BinaryOp::CARET;
+      expression->op = AST::BinaryOp::POW;
       break;
     default:
       syntax_error(_lookahead, Token(Token::Type::PLUS));
@@ -136,8 +151,11 @@ auto Parser::parse_binary_expression(Token& token, Tokens& tokens) -> std::uniqu
 
 auto Parser::parse_return(Tokens& tokens) -> std::unique_ptr<AST::Return> {
   auto returnStatement = std::make_unique<AST::Return>();
+
   auto token = consume(tokens);
+
   returnStatement->value = parse_expression(token, tokens);
+
   return returnStatement;
 }
 
