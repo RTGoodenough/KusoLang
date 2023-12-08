@@ -19,6 +19,7 @@ auto AST::to_string() const -> std::string {
         [&result](const std::unique_ptr<Return>& return_) {
           result += "return " + return_->value->to_string() + '\n';
         },
+        [&result](const std::unique_ptr<Exit>& exit) { result += "exit " + exit->value->to_string() + '\n'; },
         [&result](const std::unique_ptr<Declaration>& declaration) {
           result +=
               "declare " + declaration->name->token.value + " as " + declaration->type->token.value + '\n';
@@ -51,15 +52,15 @@ auto AST::end() const -> const_iterator { return _statements.end(); }
 // ----------------------------------------- NODE TYPES ------------------------------------------------------
 
 auto AST::BinaryExpression::to_string() const -> std::string {
-  return belt::overloaded_visit(
+  return belt::overloaded_visit<std::string>(
              left, [](const std::unique_ptr<Expression>& expression) { return expression->to_string(); }) +
-         to_char(op) + belt::overloaded_visit(right, [](const std::unique_ptr<Expression>& expression) {
-           return expression->to_string();
-         });
+         to_char(op) +
+         belt::overloaded_visit<std::string>(
+             right, [](const std::unique_ptr<Expression>& expression) { return expression->to_string(); });
 }
 
 auto AST::Assignment::to_string() const -> std::string {
-  return belt::overloaded_visit(
+  return belt::overloaded_visit<std::string>(
              dest, [](const std::unique_ptr<Terminal>& terminal) { return terminal->token.value; },
              [](const std::unique_ptr<Declaration>& declaration) {
                return declaration->name->token.value + " as " + declaration->type->token.value;
@@ -68,7 +69,7 @@ auto AST::Assignment::to_string() const -> std::string {
 }
 
 auto AST::Expression::to_string() const -> std::string {
-  return belt::overloaded_visit(
+  return belt::overloaded_visit<std::string>(
       value,
       [](const std::unique_ptr<BinaryExpression>& binary_expression) {
         return binary_expression->to_string();

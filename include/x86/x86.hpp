@@ -4,23 +4,16 @@
 #include <string>
 
 namespace kuso::x86 {
-enum class Register { RAX, RBX, RCX, RDX, RSI, RDI, RSP, RBP, R8, R9, R10, R11, R12, R13, R14, R15 };
 
-struct Address {
-  int offset;
-};
+struct Literal {
+  int64_t value;
 
-struct Source {
-  Register reg;
+  [[nodiscard]] auto to_string() const -> std::string { return std::to_string(value); }
   // NOLINTNEXTLINE(google-explicit-constructor)
-  operator Register() const { return reg; }
-};
-struct Destination {
-  Register reg;
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  operator Register() const { return reg; }
+  [[nodiscard]] operator int64_t() const { return value; }
 };
 
+enum class Register { RAX, RBX, RCX, RDX, RSI, RDI, RSP, RBP, R8, R9, R10, R11, R12, R13, R14, R15, NONE };
 enum class Op {
   MOV,
   ADD,
@@ -118,7 +111,7 @@ enum class Op {
   SYSENTERFW,
   SYSEXITPW,
   SYSCALLPW,
-  SYSENTERPW,
+  SYSENTERPW
 };
 
 [[nodiscard]] inline auto to_string(Register reg) -> std::string {
@@ -155,6 +148,8 @@ enum class Op {
       return "r14";
     case Register::R15:
       return "r15";
+    case Register::NONE:
+      break;
   }
   throw std::runtime_error("Invalid Register");
 }

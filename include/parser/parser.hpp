@@ -31,6 +31,7 @@ class Parser {
   [[noreturn]] static void syntax_error(const Token&, const Token&);
 
   [[nodiscard]] auto parse_statement(Tokens&) -> AST::Statement;
+  [[nodiscard]] auto parse_exit(Tokens&) -> std::unique_ptr<AST::Exit>;
   [[nodiscard]] auto parse_expression(Token&, Tokens&) -> std::unique_ptr<AST::Expression>;
   [[nodiscard]] auto parse_assignment(Token&, std::optional<std::unique_ptr<AST::Declaration>>, Tokens&)
       -> std::unique_ptr<AST::Assignment>;

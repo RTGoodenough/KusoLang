@@ -53,6 +53,9 @@ auto Parser::parse_statement(Tokens& tokens) -> AST::Statement {
     case Token::Type::RETURN:
       statement.statement = parse_return(tokens);
       break;
+    case Token::Type::EXIT:
+      statement.statement = parse_exit(tokens);
+      break;
     default:
       syntax_error(token, Token(Token::Type::IDENTIFIER));
   }
@@ -99,6 +102,14 @@ auto Parser::parse_assignment(Token& dest, std::optional<std::unique_ptr<AST::De
   assignment->value = parse_expression(dest, tokens);
 
   return assignment;
+}
+
+auto Parser::parse_exit(Tokens& tokens) -> std::unique_ptr<AST::Exit> {
+  auto exit = std::make_unique<AST::Exit>();
+  auto token = consume(tokens);
+  exit->value = parse_expression(token, tokens);
+
+  return exit;
 }
 
 auto Parser::parse_push(Token&, Tokens&) -> std::unique_ptr<AST::Push> {

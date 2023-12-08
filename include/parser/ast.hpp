@@ -24,6 +24,7 @@ class AST {
   struct Assignment;
   struct Expression;
   struct Statement;
+  struct Exit;
   using iterator = std::vector<Statement>::iterator;
   using const_iterator = std::vector<Statement>::const_iterator;
 
@@ -51,6 +52,10 @@ enum class AST::BinaryOp {
 };
 struct AST::Terminal {
   Token token;
+};
+
+struct AST::Exit {
+  std::unique_ptr<Expression> value;
 };
 
 struct AST::Declaration {
@@ -99,11 +104,12 @@ struct AST::Expression {
 };
 
 struct AST::Statement {
-  std::variant<std::unique_ptr<Assignment>, std::unique_ptr<Push>, std::unique_ptr<Declaration>,
-               std::unique_ptr<Return>, std::nullptr_t>
+  std::variant<std::unique_ptr<Exit>, std::unique_ptr<Assignment>, std::unique_ptr<Push>,
+               std::unique_ptr<Declaration>, std::unique_ptr<Return>, std::nullptr_t>
       statement;
 
   explicit Statement(std::nullptr_t) : statement(nullptr) {}
+  explicit Statement(std::unique_ptr<Exit> exit) : statement(std::move(exit)) {}
   explicit Statement(std::unique_ptr<Push> push) : statement(std::move(push)) {}
   explicit Statement(std::unique_ptr<Return> return_) : statement(std::move(return_)) {}
   explicit Statement(std::unique_ptr<Assignment> assignment) : statement(std::move(assignment)) {}

@@ -218,11 +218,9 @@ auto Lexer::replace_keyword_type(const std::string& value) -> Token::Type {
 }
 
 auto Lexer::keywords() -> const std::map<std::string, Token::Type>& {
-  static const std::map<std::string, Token::Type> KEYWORDS{{"if", Token::Type::IF},
-                                                           {"else", Token::Type::ELSE},
-                                                           {"for", Token::Type::FOR},
-                                                           {"while", Token::Type::WHILE},
-                                                           {"return", Token::Type::RETURN}};
+  static const std::map<std::string, Token::Type> KEYWORDS{
+      {"if", Token::Type::IF},       {"else", Token::Type::ELSE},     {"for", Token::Type::FOR},
+      {"while", Token::Type::WHILE}, {"return", Token::Type::RETURN}, {"exit", Token::Type::EXIT}};
   return KEYWORDS;
 }
 }  // namespace kuso

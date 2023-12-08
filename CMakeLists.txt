@@ -40,12 +40,21 @@ include_directories(
   SYSTEM
   ${deps_dir}
 )
+
+include(FetchContent)
+FetchContent_Declare(
+  fmt
+  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+  GIT_TAG 10.1.1
+)
+FetchContent_MakeAvailable(fmt)
     
 add_subdirectory(${deps_dir}/pirate pirate)
 target_link_libraries(
   ${PROJECT_NAME}
   PRIVATE
   pirate
+  fmt::fmt
 )
 
 target_compile_options(
