@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <iostream>
 
 #include "class_macros.hpp"
@@ -28,8 +29,15 @@ class File {
     return chr;
   }
 
+  void write_ln(const std::string& str) { _file << str << '\n'; }
   void write(const std::string& str) { _file << str; }
   void write(char chr) { _file << chr; }
+  void write_hex(std::uint8_t hex) { _file << std::hex << hex; }
+  void write_hex(std::initializer_list<std::uint8_t> values) {
+    for (const auto& value : values) {
+      write_hex(value);
+    }
+  }
 
   [[nodiscard]] auto by_char() -> belt::Generator<char> {
     char chr = '\0';

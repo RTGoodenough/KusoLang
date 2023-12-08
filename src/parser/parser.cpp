@@ -11,9 +11,9 @@
 namespace kuso {
 
 void Parser::syntax_error(const Token& token, const Token& expected) {
-  std::cerr << "Syntax error: \nExpected:\n"
-            << to_string(expected) << "\nFound:\n"
-            << to_string(token) << std::endl;
+  std::cerr << "Syntax Error: Line " << std::to_string(token.line) << " Column "
+            << std::to_string(token.column) << "\nExpected: " << to_string(expected)
+            << "\nFound: " << to_string(token) << "\n";
 
   std::exit(1);
 }

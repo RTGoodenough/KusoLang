@@ -6,11 +6,6 @@
 
 namespace kuso {
 struct Token {
-  DEFAULT_CONSTRUCTIBLE(Token)
-  DEFAULT_COPYABLE(Token)
-  DEFAULT_DESTRUCTIBLE(Token)
-  DEFAULT_MOVABLE(Token)
-
   enum class Type {
     IDENTIFIER,
     KEYWORD,
@@ -58,10 +53,17 @@ struct Token {
     UNDERSCORE,
   };
 
-  Type        type;
+  Type        type{Type::END_OF_FILE};
+  int         line{0};
+  int         column{0};
   std::string value;
 
-  explicit Token(Type type, std::string value = "") noexcept : type(type), value(std::move(value)) {}
+  explicit Token(Type type, int lineNum = 0, int colNum = 0, std::string value = "") noexcept
+      : type(type), line(lineNum), column(colNum), value(std::move(value)) {}
+  DEFAULT_CONSTRUCTIBLE(Token)
+  DEFAULT_COPYABLE(Token)
+  DEFAULT_DESTRUCTIBLE(Token)
+  DEFAULT_MOVABLE(Token)
 };
 
 inline auto to_string(const Token& token) -> std::string {

@@ -27,6 +27,8 @@ class Lexer {
 
  private:
   belt::File _source;
+  int        _line{1};
+  int        _column{1};
 
   [[nodiscard]] static auto is_keyword(const std::string&) -> bool;
   [[nodiscard]] static auto keywords() -> const std::map<std::string, Token::Type>&;
