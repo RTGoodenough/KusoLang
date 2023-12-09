@@ -52,8 +52,11 @@ class Generator {
   void generate_expression(const AST::Expression&);
   void generate_expression(const AST::Terminal&);
 
+  void new_context();
+  void leave_context();
+
   [[nodiscard]] auto get_type_id(const std::string&) -> int;
-  [[nodiscard]] auto get_type(const std::string&) -> Type_t;
+  [[nodiscard]] auto get_type(int) -> Type_t;
 
   [[nodiscard]] static auto get_identifier(const AST::Expression&) -> const std::string&;
   [[nodiscard]] static auto get_identifier(const AST::Terminal&) -> const std::string&;
@@ -61,7 +64,7 @@ class Generator {
   [[nodiscard]] static auto get_identifier(const AST::Assignment&) -> const std::string&;
   [[nodiscard]] static auto get_decl_type(const AST::Declaration&) -> const std::string&;
 
-  [[nodiscard]] auto context() -> Context& { return _contexts.top(); }
-  [[nodiscard]] auto context() const -> const Context& { return _contexts.top(); }
+  [[nodiscard]] inline auto context() -> Context& { return _contexts.top(); }
+  [[nodiscard]] inline auto context() const -> const Context& { return _contexts.top(); }
 };
 }  // namespace kuso

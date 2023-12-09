@@ -13,6 +13,7 @@ struct Literal {
   [[nodiscard]] operator int64_t() const { return value; }
 };
 
+enum Size { BYTE = 1, WORD = 2, DWORD = 4, QWORD = 8 };
 enum class Register { RAX, RBX, RCX, RDX, RSI, RDI, RSP, RBP, R8, R9, R10, R11, R12, R13, R14, R15, NONE };
 enum class Op {
   MOV,

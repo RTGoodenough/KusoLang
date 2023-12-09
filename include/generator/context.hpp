@@ -8,6 +8,7 @@
 
 namespace kuso {
 struct Context {
+  int                             size;
   x86::Address                    stack;
   std::map<std::string, Variable> variables;
   std::map<std::string, int>      typeIDs;

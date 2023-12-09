@@ -39,18 +39,23 @@ void Generator::generate(const AST::Statement& statement) {
 
 void Generator::generate_declaration(const AST::Declaration& declaration) {
   std::cout << "generate_declaration\n";
+  auto&       current = context();
   const auto& name = get_identifier(declaration);
   auto        typeID = get_type_id(get_decl_type(declaration));
 
-  if (context().variables.find(name) != context().variables.end()) {
+  if (current.variables.find(name) != current.variables.end()) {
     throw std::runtime_error("Multiple Declarations of " + name);
   }
 
-  // TODO(rolland): push the correct size to the stack
-  context().variables[name] = Variable{
-      typeID, {x86::Address::Mode::INDIRECT_DISPLACEMENT, context().stack.reg, context().stack.disp}};
+  for (auto& variable : current.variables) {
+    variable.second.location.disp += get_type(typeID).size;
+  }
+
+  current.variables[name] =
+      Variable{typeID, {x86::Address::Mode::INDIRECT_DISPLACEMENT, x86::Register::RSP, 0}};
   emit(x86::Op::PUSH, x86::Literal{0});
-  context().stack.disp += get_type(get_decl_type(declaration)).size;
+  current.size += get_type(typeID).size;
+  current.stack.disp += get_type(typeID).size;
 }
 
 void Generator::generate_assignment(const AST::Assignment& assignment) {
@@ -93,8 +98,6 @@ void Generator::generate_expression(const AST::Expression& expression) {
 
 void Generator::generate_expression(const AST::Terminal& terminal) {
   std::cout << "generate_expression\n";
-
-  std::cout << to_string(terminal.token) << '\n';
 
   if (terminal.token.type == Token::Type::IDENTIFIER) {
     const auto& name = terminal.token.value;
@@ -208,14 +211,14 @@ Generator::Generator(const std::filesystem::path& outputpath)
   init_context();
 }
 
-auto Generator::get_type(const std::string& type) -> Type_t {
+auto Generator::get_type(int typeID) -> Type_t {
   std::cout << "get_type\n";
-  auto typeIter = context().typeIDs.find(type);
-  if (typeIter == context().typeIDs.end()) {
-    throw std::runtime_error("Unknown Type " + type);
+  auto typeIter = context().types.find(typeID);
+  if (typeIter == context().types.end()) {
+    throw std::runtime_error("Unknown Type " + std::to_string(typeID));
   }
 
-  return context().types[typeIter->second];
+  return typeIter->second;
 }
 
 auto Generator::get_type_id(const std::string& type) -> int {
@@ -231,6 +234,7 @@ auto Generator::get_type_id(const std::string& type) -> int {
 void Generator::init_context() {
   std::cout << "init_context\n";
   _contexts.emplace(Context{
+      .size = 0,
       .stack = x86::Address{x86::Address::Mode::DIRECT, x86::Register::RSP, 0},
       .variables = {},
       .typeIDs =
@@ -240,10 +244,9 @@ void Generator::init_context() {
           },
       .types =
           {
-              {0, Type_t{8}},
+              {0, Type_t{x86::Size::QWORD}},
               {1, Type_t{1}},
           },
   });
 }
-
 }  // namespace kuso

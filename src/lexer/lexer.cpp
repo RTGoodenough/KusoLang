@@ -2,6 +2,9 @@
 #include "lexer/lexer.hpp"
 #include "lexer/token.hpp"
 
+#include <fmt/format.h>
+#include <cwctype>
+
 namespace kuso {
 
 // TODO(rolland): line column points to the end of the token
@@ -32,7 +35,13 @@ auto Lexer::parse_token() -> Token {
   if (chr == '/') {
     chr = skip_comments();
   }
-  while (std::isblank(chr)) {
+
+  while (std::iswspace(chr)) {
+    if (chr == '\n') {
+      ++_line;
+      _column = 1;
+    }
+
     chr = _source.next_char();
     ++_column;
   }
@@ -151,7 +160,7 @@ auto Lexer::parse_token() -> Token {
       if (std::isdigit(chr)) {
         return parse_number(chr);
       }
-      throw std::runtime_error("Unexpected character: " + std::to_string(chr) + '\n');
+      throw std::runtime_error(fmt::format("Invalid character: {}", chr));
     }
   }
 }
@@ -163,8 +172,9 @@ auto Lexer::skip_comments() -> char {
     ++_line;
     _column = 1;
   }
-  return _source.next_char();
+
   ++_column;
+  return _source.next_char();
 }
 
 auto Lexer::parse_identifier(char chr) -> Token {
