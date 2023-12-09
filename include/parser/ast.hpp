@@ -21,10 +21,12 @@ class AST {
   struct BinaryExpression;
   struct Return;
   struct Push;
+  struct Print;
   struct Assignment;
   struct Expression;
   struct Statement;
   struct Exit;
+  struct String;
   using iterator = std::vector<Statement>::iterator;
   using const_iterator = std::vector<Statement>::const_iterator;
 
@@ -54,8 +56,14 @@ struct AST::Terminal {
   Token token;
 };
 
+struct AST::String {
+  std::string value;
+};
+
 struct AST::Exit {
   std::unique_ptr<Expression> value;
+
+  [[nodiscard]] auto to_string() const -> std::string;
 };
 
 struct AST::Declaration {
@@ -74,6 +82,8 @@ struct AST::BinaryExpression {
 
 struct AST::Return {
   std::unique_ptr<Expression> value;
+
+  [[nodiscard]] auto to_string() const -> std::string;
 };
 
 struct AST::Push {
@@ -90,6 +100,12 @@ struct AST::Assignment {
   [[nodiscard]] auto to_string() const -> std::string;
 };
 
+struct AST::Print {
+  std::unique_ptr<Expression> value;
+
+  [[nodiscard]] auto to_string() const -> std::string;
+};
+
 struct AST::Expression {
   enum class Type {
     L_VALUE,
@@ -97,7 +113,7 @@ struct AST::Expression {
   };
 
   std::variant<std::unique_ptr<BinaryExpression>, std::unique_ptr<Terminal>, std::unique_ptr<Declaration>,
-               std::unique_ptr<Push>>
+               std::unique_ptr<Push>, AST::String>
       value;
 
   [[nodiscard]] auto to_string() const -> std::string;
@@ -105,7 +121,7 @@ struct AST::Expression {
 
 struct AST::Statement {
   std::variant<std::unique_ptr<Exit>, std::unique_ptr<Assignment>, std::unique_ptr<Push>,
-               std::unique_ptr<Declaration>, std::unique_ptr<Return>, std::nullptr_t>
+               std::unique_ptr<Declaration>, std::unique_ptr<Return>, std::unique_ptr<Print>, std::nullptr_t>
       statement;
 
   explicit Statement(std::nullptr_t) : statement(nullptr) {}

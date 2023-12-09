@@ -56,6 +56,9 @@ auto Parser::parse_statement(Tokens& tokens) -> AST::Statement {
     case Token::Type::EXIT:
       statement.statement = parse_exit(tokens);
       break;
+    case Token::Type::PRINT:
+      statement.statement = parse_print(token, tokens);
+      break;
     default:
       syntax_error(token, Token(Token::Type::IDENTIFIER));
   }
@@ -81,6 +84,11 @@ auto Parser::parse_expression(Token& token, Tokens& tokens) -> std::unique_ptr<A
       break;
     default:
       break;
+  }
+
+  if (token.type == Token::Type::STRING) {
+    expression->value = AST::String(token.value);
+    return expression;
   }
 
   expression->value = std::make_unique<AST::Terminal>(token);
@@ -168,6 +176,15 @@ auto Parser::parse_return(Tokens& tokens) -> std::unique_ptr<AST::Return> {
   returnStatement->value = parse_expression(token, tokens);
 
   return returnStatement;
+}
+
+auto Parser::parse_print(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Print> {
+  auto print = std::make_unique<AST::Print>();
+
+  token = consume(tokens);
+  print->value = parse_expression(token, tokens);
+
+  return print;
 }
 
 auto Parser::match(Token::Type type, Tokens& tokens) -> Token {

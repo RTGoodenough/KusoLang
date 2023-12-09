@@ -136,7 +136,7 @@ auto Lexer::parse_token() -> Token {
       return Token(Token::Type::PIPE, _line, _column);
       break;
     case '"':
-      return parse_string(chr);
+      return parse_string();
       break;
     case '\'':
       return Token(Token::Type::SINGLE_QUOTE, _line, _column);
@@ -203,14 +203,17 @@ auto Lexer::parse_number(char chr) -> Token {
   return Token(Token::Type::NUMBER, _line, _column, value);
 }
 
-auto Lexer::parse_string(char chr) -> Token {
-  std::string value;
-  value += chr;
+auto Lexer::parse_string() -> Token {
+  std::string value = "\"";
   while (_source.peek_char() != '"' && !_source.eof()) {
     value += _source.next_char();
     ++_column;
   }
 
+  if (_source.eof()) {
+    throw std::runtime_error("Unterminated string");
+  }
+  value += _source.next_char();
   return Token(Token::Type::STRING, _line, _column, value);
 }
 
@@ -230,7 +233,8 @@ auto Lexer::replace_keyword_type(const std::string& value) -> Token::Type {
 auto Lexer::keywords() -> const std::map<std::string, Token::Type>& {
   static const std::map<std::string, Token::Type> KEYWORDS{
       {"if", Token::Type::IF},       {"else", Token::Type::ELSE},     {"for", Token::Type::FOR},
-      {"while", Token::Type::WHILE}, {"return", Token::Type::RETURN}, {"exit", Token::Type::EXIT}};
+      {"while", Token::Type::WHILE}, {"return", Token::Type::RETURN}, {"exit", Token::Type::EXIT},
+      {"print", Token::Type::PRINT}};
   return KEYWORDS;
 }
 }  // namespace kuso

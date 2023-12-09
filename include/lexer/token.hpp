@@ -10,6 +10,7 @@ struct Token {
     IDENTIFIER,
     KEYWORD,
     RETURN,
+    PRINT,
     EXIT,
     IF,
     ELSE,

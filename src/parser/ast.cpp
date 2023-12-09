@@ -16,6 +16,9 @@ auto AST::to_string() const -> std::string {
           // TODO(rolland): Implement push to string
           result += "push\n";
         },
+        [&result](const std::unique_ptr<Print>& print) {
+          result += "print " + print->value->to_string() + '\n';
+        },
         [&result](const std::unique_ptr<Return>& return_) {
           result += "return " + return_->value->to_string() + '\n';
         },
@@ -74,6 +77,7 @@ auto AST::Expression::to_string() const -> std::string {
       [](const std::unique_ptr<BinaryExpression>& binary_expression) {
         return binary_expression->to_string();
       },
+      [](const AST::String& string) { return string.value; },
       [](const std::unique_ptr<Terminal>& terminal) { return terminal->token.value; },
       [](const std::unique_ptr<Declaration>& declaration) {
         return declaration->name->token.value + " as " + declaration->type->token.value;
@@ -90,5 +94,11 @@ auto AST::Declaration::to_string() const -> std::string {
 auto AST::Push::to_string() const -> std::string {
   return "push " + value->to_string() + " -> " + dest->to_string();
 }
+
+auto AST::Return::to_string() const -> std::string { return "return " + value->to_string(); }
+
+auto AST::Exit::to_string() const -> std::string { return "exit " + value->to_string(); }
+
+auto AST::Print::to_string() const -> std::string { return "print " + value->to_string(); }
 
 }  // namespace kuso

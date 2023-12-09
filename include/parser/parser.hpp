@@ -39,5 +39,6 @@ class Parser {
   [[nodiscard]] auto parse_return(Tokens&) -> std::unique_ptr<AST::Return>;
   [[nodiscard]] auto parse_declaration(Token&, Tokens&) -> std::unique_ptr<AST::Declaration>;
   [[nodiscard]] auto parse_binary_expression(Token&, Tokens&) -> std::unique_ptr<AST::BinaryExpression>;
+  [[nodiscard]] auto parse_print(Token&, Tokens&) -> std::unique_ptr<AST::Print>;
 };
 }  // namespace kuso

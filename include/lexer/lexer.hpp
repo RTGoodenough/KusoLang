@@ -37,7 +37,7 @@ class Lexer {
   [[nodiscard]] auto skip_comments() -> char;
   [[nodiscard]] auto parse_identifier(char) -> Token;
   [[nodiscard]] auto parse_number(char) -> Token;
-  [[nodiscard]] auto parse_string(char) -> Token;
+  [[nodiscard]] auto parse_string() -> Token;
   [[nodiscard]] auto parse_token() -> Token;
 };
 }  // namespace kuso

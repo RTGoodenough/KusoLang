@@ -30,8 +30,16 @@ class Generator {
   belt::File          _outputFile;
   std::stack<Context> _contexts;
 
-  void init_context();
+  std::map<std::string, std::string> _string_names;
+  std::map<std::string, std::string> _string_values;
 
+  std::string _output_code;
+  std::string _output_data;
+
+  void init_context();
+  void init_data();
+
+  void add_data(const std::string&, const std::string&);
   void emit(const std::string&);
   void emit(x86::Op);
   void emit(x86::Op, x86::Register);
@@ -39,6 +47,7 @@ class Generator {
   void emit(x86::Op, x86::Register, x86::Address);
   void emit(x86::Op, x86::Register, x86::Register);
   void emit(x86::Op, x86::Address, x86::Register);
+  void emit(x86::Op, x86::Register, const std::string&);
   void emit(x86::Op, x86::Literal);
   void emit(x86::Op, x86::Address, x86::Literal);
   void emit(x86::Op, x86::Register, x86::Literal);
@@ -48,9 +57,11 @@ class Generator {
   void generate_declaration(const AST::Declaration&);
   void generate_return(const AST::Return&);
   void generate_exit(const AST::Exit&);
+  void generate_print(const AST::Print&);
 
   void generate_expression(const AST::Expression&);
   void generate_expression(const AST::Terminal&);
+  void generate_string(const AST::String&);
 
   void new_context();
   void leave_context();

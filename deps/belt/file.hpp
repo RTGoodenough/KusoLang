@@ -22,11 +22,11 @@ class File {
   [[nodiscard]] auto is_open() const noexcept -> bool { return _file.is_open(); }
   [[nodiscard]] auto eof() const -> bool { return _file.eof(); }
   [[nodiscard]] auto peek_char() -> int { return _file.peek(); }
-  [[nodiscard]] auto next_char() -> char {
-    char chr = '\0';
-    _file.get(chr);
-    _eof = _file.eof();
-    return chr;
+  auto               next_char() -> char {
+                  char chr = '\0';
+                  _file.get(chr);
+                  _eof = _file.eof();
+                  return chr;
   }
 
   void write_ln(const std::string& str) { _file << str << '\n'; }
