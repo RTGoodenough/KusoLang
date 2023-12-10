@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <stack>
 #include <string>
 
 #include "generator/variables.hpp"
@@ -13,5 +14,6 @@ struct Context {
   std::map<std::string, Variable> variables;
   std::map<std::string, int>      typeIDs;
   std::map<int, Type_t>           types;
+  std::stack<std::string>         labels;
 };
 }  // namespace kuso

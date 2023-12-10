@@ -16,6 +16,7 @@ auto AST::to_string() const -> std::string {
           // TODO(rolland): Implement push to string
           result += "push\n";
         },
+        [&result](const std::unique_ptr<If>& if_) { result += if_->to_string(); },
         [&result](const std::unique_ptr<Print>& print) {
           result += "print " + print->value->to_string() + '\n';
         },
@@ -100,5 +101,10 @@ auto AST::Return::to_string() const -> std::string { return "return " + value->t
 auto AST::Exit::to_string() const -> std::string { return "exit " + value->to_string(); }
 
 auto AST::Print::to_string() const -> std::string { return "print " + value->to_string(); }
+
+auto AST::If::to_string() const -> std::string {
+  std::string result = "if " + condition->to_string() + ":\n";
+  return result;
+}
 
 }  // namespace kuso

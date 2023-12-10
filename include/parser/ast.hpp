@@ -27,6 +27,8 @@ class AST {
   struct Statement;
   struct Exit;
   struct String;
+  struct If;
+
   using iterator = std::vector<Statement>::iterator;
   using const_iterator = std::vector<Statement>::const_iterator;
 
@@ -51,6 +53,12 @@ enum class AST::BinaryOp {
   DIV,
   MOD,
   POW,
+  EQ,
+  NEQ,
+  LT,
+  GT,
+  LTE,
+  GTE,
 };
 struct AST::Terminal {
   Token token;
@@ -119,8 +127,15 @@ struct AST::Expression {
   [[nodiscard]] auto to_string() const -> std::string;
 };
 
+struct AST::If {
+  std::unique_ptr<Expression> condition;
+  std::vector<Statement>      body;
+
+  [[nodiscard]] auto to_string() const -> std::string;
+};
+
 struct AST::Statement {
-  std::variant<std::unique_ptr<Exit>, std::unique_ptr<Assignment>, std::unique_ptr<Push>,
+  std::variant<std::unique_ptr<If>, std::unique_ptr<Exit>, std::unique_ptr<Assignment>, std::unique_ptr<Push>,
                std::unique_ptr<Declaration>, std::unique_ptr<Return>, std::unique_ptr<Print>, std::nullptr_t>
       statement;
 

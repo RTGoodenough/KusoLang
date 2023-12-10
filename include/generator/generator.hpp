@@ -30,6 +30,8 @@ class Generator {
   belt::File          _outputFile;
   std::stack<Context> _contexts;
 
+  std::vector<std::string> _labels;
+
   std::map<std::string, std::string> _string_names;
   std::map<std::string, std::string> _string_values;
 
@@ -40,8 +42,9 @@ class Generator {
   void init_data();
 
   void add_data(const std::string&, const std::string&);
-  void emit(const std::string&);
   void emit(x86::Op);
+  void emit(const std::string&);
+  void emit(x86::Op, const std::string&);
   void emit(x86::Op, x86::Register);
   void emit(x86::Op, x86::Address, x86::Address);
   void emit(x86::Op, x86::Register, x86::Address);
@@ -58,6 +61,7 @@ class Generator {
   void generate_return(const AST::Return&);
   void generate_exit(const AST::Exit&);
   void generate_print(const AST::Print&);
+  void generate_if(const AST::If&);
 
   void generate_expression(const AST::Expression&);
   void generate_expression(const AST::Terminal&);

@@ -59,12 +59,45 @@ auto Parser::parse_statement(Tokens& tokens) -> AST::Statement {
     case Token::Type::PRINT:
       statement.statement = parse_print(token, tokens);
       break;
+    case Token::Type::IF:
+      statement.statement = parse_if(token, tokens);
+      break;
     default:
       syntax_error(token, Token(Token::Type::IDENTIFIER));
   }
 
   match(Token::Type::SEMI_COLON, tokens);
   return statement;
+}
+
+auto Parser::parse_if(Token& token, Tokens& tokens) -> std::unique_ptr<AST::If> {
+  // TODO(rolland): NEXT
+  /*
+  EQ,
+  NEQ,
+  LT,
+  GT,
+  LTE,
+  GTE,
+  */
+
+  // TODO(rolland): add else to if statements
+  auto ifStatement = std::make_unique<AST::If>();
+
+  match(Token::Type::OPEN_PAREN, tokens);
+  token = consume(tokens);
+  ifStatement->condition = parse_expression(token, tokens);
+
+  match(Token::Type::CLOSE_PAREN, tokens);
+  match(Token::Type::OPEN_BRACE, tokens);
+  token = consume(tokens);
+
+  while (token.type != Token::Type::CLOSE_BRACE) {
+    ifStatement->body.push_back(parse_statement(tokens));
+    token = consume(tokens);
+  }
+
+  return ifStatement;
 }
 
 auto Parser::parse_expression(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Expression> {

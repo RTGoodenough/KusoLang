@@ -36,6 +36,7 @@ void Generator::generate(const AST::Statement& statement) {
       [&](const std::unique_ptr<AST::Assignment>& assignment) { generate_assignment(*assignment); },
       [&](const std::unique_ptr<AST::Exit>& exit) { generate_exit(*exit); },
       [&](const std::unique_ptr<AST::Print>& print) { generate_print(*print); },
+      [&](const std::unique_ptr<AST::If>& ifStatement) { generate_if(*ifStatement); },
       [&](const std::unique_ptr<AST::Push>&) {}, [&](const std::unique_ptr<AST::Return>&) {},
       [](std::nullptr_t) {});
 }
@@ -152,7 +153,20 @@ void Generator::generate_string(const AST::String& string) {
   emit(x86::Op::MOV, x86::Register::RDX, x86::Literal{static_cast<int>(replacedStr.length())});
 }
 
-auto Generator::get_identifier(const AST::Expression& expression) -> const std::string& {
+auto Generator::generate_if(const AST::If& ifStatement) -> void {
+  generate_expression(*ifStatement.condition);
+  emit(x86::Op::CMP, x86::Register::RAX, x86::Literal{0});
+  auto label = fmt::format("if_{}", context().labels.size());
+  context().labels.push(label);
+  emit(x86::Op::JE, label);
+  for (const auto& statement : ifStatement.body) {
+    generate(statement);
+  }
+  emit(label + ":");
+  context().labels.pop();
+}
+
+[[nodiscard]] auto Generator::get_identifier(const AST::Expression& expression) -> const std::string& {
   return belt::overloaded_visit<const std::string&>(
       expression.value,
       [&](const std::unique_ptr<AST::Terminal>& terminal) -> const std::string& {
@@ -201,6 +215,9 @@ void Generator::emit(x86::Op operation) {
 }
 void Generator::emit(x86::Op operation, x86::Register src) {
   _output_code.append(fmt::format("{} {}\n", x86::to_string(operation), x86::to_string(src)));
+}
+void Generator::emit(x86::Op operation, const std::string& value) {
+  _output_code.append(fmt::format("{} {}\n", x86::to_string(operation), value));
 }
 void Generator::emit(x86::Op operation, x86::Address dest, x86::Address src) {
   _output_code.append(
@@ -272,6 +289,7 @@ void Generator::init_context() {
       .variables = {},
       .typeIDs = {{"int", 0}, {"byte", 1}, {"str", 2}},
       .types = {{0, Type_t{x86::Size::QWORD}}, {1, Type_t{1}}, {2, Type_t{x86::Size::QWORD}}},
+      .labels = {},
   });
 }
 

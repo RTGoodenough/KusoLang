@@ -127,7 +127,7 @@ auto Lexer::parse_token() -> Token {
       return Token(Token::Type::GREATER_THAN, _line, _column);
       break;
     case '=':
-      return Token(Token::Type::EQUAL, _line, _column);
+      return replace_bool_equal();
       break;
     case '/':
       return Token(Token::Type::SLASH, _line, _column);
@@ -215,6 +215,16 @@ auto Lexer::parse_string() -> Token {
   }
   value += _source.next_char();
   return Token(Token::Type::STRING, _line, _column, value);
+}
+
+auto Lexer::replace_bool_equal() -> Token {
+  if (_source.peek_char() == '=') {
+    _source.next_char();
+    ++_column;
+    return Token(Token::Type::BOOL_EQUAl, _line, _column);
+  }
+
+  return Token(Token::Type::EQUAL, _line, _column);
 }
 
 auto Lexer::is_keyword(const std::string& value) -> bool {
