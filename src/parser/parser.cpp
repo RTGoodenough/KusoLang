@@ -1,5 +1,6 @@
 
 
+#include <initializer_list>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -66,12 +67,11 @@ auto Parser::parse_statement(Tokens& tokens) -> AST::Statement {
       syntax_error(token, Token(Token::Type::IDENTIFIER));
   }
 
-  match(Token::Type::SEMI_COLON, tokens);
+  match({Token::Type::SEMI_COLON}, tokens);
   return statement;
 }
 
 auto Parser::parse_if(Token& token, Tokens& tokens) -> std::unique_ptr<AST::If> {
-  // TODO(rolland): NEXT
   /*
   EQ,
   NEQ,
@@ -84,12 +84,12 @@ auto Parser::parse_if(Token& token, Tokens& tokens) -> std::unique_ptr<AST::If> 
   // TODO(rolland): add else to if statements
   auto ifStatement = std::make_unique<AST::If>();
 
-  match(Token::Type::OPEN_PAREN, tokens);
+  match({Token::Type::OPEN_PAREN}, tokens);
   token = consume(tokens);
   ifStatement->condition = parse_expression(token, tokens);
 
-  match(Token::Type::CLOSE_PAREN, tokens);
-  match(Token::Type::OPEN_BRACE, tokens);
+  match({Token::Type::CLOSE_PAREN}, tokens);
+  match({Token::Type::OPEN_BRACE}, tokens);
   token = consume(tokens);
 
   while (token.type != Token::Type::CLOSE_BRACE) {
@@ -101,30 +101,8 @@ auto Parser::parse_if(Token& token, Tokens& tokens) -> std::unique_ptr<AST::If> 
 }
 
 auto Parser::parse_expression(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Expression> {
-  auto expression = std::make_unique<AST::Expression>();
+  auto expression = std::make_unique<AST::Comparison>();
 
-  switch (_lookahead.type) {
-    case Token::Type::PLUS:
-    case Token::Type::MINUS:
-    case Token::Type::ASTERISK:
-    case Token::Type::SLASH:
-    case Token::Type::PERCENT:
-    case Token::Type::CARET:
-      expression->value = parse_binary_expression(token, tokens);
-      return expression;
-    case Token::Type::ARROW:
-      throw std::runtime_error("Chained push not implemented");
-      break;
-    default:
-      break;
-  }
-
-  if (token.type == Token::Type::STRING) {
-    expression->value = AST::String(token.value);
-    return expression;
-  }
-
-  expression->value = std::make_unique<AST::Terminal>(token);
   return expression;
 }
 
@@ -137,7 +115,7 @@ auto Parser::parse_assignment(Token& dest, std::optional<std::unique_ptr<AST::De
   else
     assignment->dest = std::make_unique<AST::Terminal>(dest);
 
-  match(Token::Type::EQUAL, tokens);
+  match({Token::Type::EQUAL}, tokens);
   dest = consume(tokens);
 
   assignment->value = parse_expression(dest, tokens);
@@ -162,8 +140,8 @@ auto Parser::parse_declaration(Token& dest, Tokens& tokens) -> std::unique_ptr<A
 
   declaration->name = std::make_unique<AST::Terminal>(dest);
 
-  match(Token::Type::COLON, tokens);
-  dest = match(Token::Type::IDENTIFIER, tokens);
+  match({Token::Type::COLON}, tokens);
+  dest = match({Token::Type::IDENTIFIER}, tokens);
 
   declaration->type = std::make_unique<AST::Terminal>(dest);
   return declaration;
@@ -220,12 +198,14 @@ auto Parser::parse_print(Token& token, Tokens& tokens) -> std::unique_ptr<AST::P
   return print;
 }
 
-auto Parser::match(Token::Type type, Tokens& tokens) -> Token {
-  if (_lookahead.type == type) {
-    return consume(tokens);
+auto Parser::match(std::initializer_list<Token::Type> types, Tokens& tokens) -> Token {
+  for (auto type : types) {
+    if (_lookahead.type == type) {
+      return consume(tokens);
+    }
   }
 
-  syntax_error(_lookahead, Token(type));
+  syntax_error(_lookahead, Token(*types.begin()));
 }
 
 auto Parser::consume(Tokens& tokens) -> Token {

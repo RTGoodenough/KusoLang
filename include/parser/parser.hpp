@@ -1,5 +1,6 @@
 #pragma once
 
+#include <initializer_list>
 #include <optional>
 
 #include "lexer/lexer.hpp"
@@ -25,7 +26,7 @@ class Parser {
 
   Token _lookahead;
 
-  auto match(Token::Type, Tokens&) -> Token;
+  auto match(std::initializer_list<Token::Type>, Tokens&) -> Token;
   auto consume(Tokens&) -> Token;
 
   [[noreturn]] static void syntax_error(const Token&, const Token&);

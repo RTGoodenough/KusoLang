@@ -107,4 +107,22 @@ auto AST::If::to_string() const -> std::string {
   return result;
 }
 
+auto AST::Comparison::to_string() const -> std::string {
+  return left->to_string() + " " + to_char(op) + " " + right->to_string();
+}
+
+auto AST::Equality::to_string() const -> std::string {
+  return left->to_string() + " " + to_char(op) + " " + right->to_string();
+}
+
+auto AST::Term::to_string() const -> std::string {
+  return left->to_string() + " " + to_char(op) + " " + right->to_string();
+}
+
+auto AST::Factor::to_string() const -> std::string {
+  return left->to_string() + " " + to_char(op) + " " + right->to_string();
+}
+
+auto AST::Unary::to_string() const -> std::string { return to_char(op) + value->to_string(); }
+
 }  // namespace kuso

@@ -24,6 +24,11 @@ class AST {
   struct Print;
   struct Assignment;
   struct Expression;
+  struct Equality;
+  struct Comparison;
+  struct Term;
+  struct Factor;
+  struct Unary;
   struct Statement;
   struct Exit;
   struct String;
@@ -123,6 +128,45 @@ struct AST::Expression {
   std::variant<std::unique_ptr<BinaryExpression>, std::unique_ptr<Terminal>, std::unique_ptr<Declaration>,
                std::unique_ptr<Push>, AST::String>
       value;
+
+  [[nodiscard]] auto to_string() const -> std::string;
+};
+
+struct AST::Equality {
+  std::unique_ptr<Expression> left;
+  std::unique_ptr<Expression> right;
+  bool                        equal;
+
+  [[nodiscard]] auto to_string() const -> std::string;
+};
+
+struct AST::Comparison {
+  std::unique_ptr<Expression> left;
+  std::unique_ptr<Expression> right;
+  BinaryOp                    op;
+
+  [[nodiscard]] auto to_string() const -> std::string;
+};
+
+struct AST::Term {
+  std::unique_ptr<Expression> left;
+  std::unique_ptr<Expression> right;
+  BinaryOp                    op;
+
+  [[nodiscard]] auto to_string() const -> std::string;
+};
+
+struct AST::Factor {
+  std::unique_ptr<Expression> left;
+  std::unique_ptr<Expression> right;
+  BinaryOp                    op;
+
+  [[nodiscard]] auto to_string() const -> std::string;
+};
+
+struct AST::Unary {
+  std::unique_ptr<Expression> value;
+  BinaryOp                    op;
 
   [[nodiscard]] auto to_string() const -> std::string;
 };
