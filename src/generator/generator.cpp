@@ -80,22 +80,8 @@ void Generator::generate_assignment(const AST::Assignment& assignment) {
   emit(x86::Op::MOV, variableIter->second.location, x86::Register::RAX);
 }
 
-void Generator::generate_expression(const AST::Expression& expression) {
+void Generator::generate_expression(const AST::Expression&) {
   // TODO(rolland): implement
-  belt::overloaded_visit(
-      expression.value,
-      [&](const std::unique_ptr<AST::Terminal>& terminal) { generate_expression(*terminal); },
-      [&](const AST::String& string) { generate_string(string); },
-      [&](const std::unique_ptr<AST::Declaration>&) {
-        throw std::runtime_error("Declaration Expressions are not implemented");
-      },
-      [&](const std::unique_ptr<AST::BinaryExpression>&) {
-        throw std::runtime_error("Binary Expressions are not implemented");
-      },
-      [&](const std::unique_ptr<AST::Push>&) {
-        throw std::runtime_error("Push Expressions are not implemented");
-      },
-      [](std::nullptr_t) {});
 }
 
 void Generator::generate_expression(const AST::Terminal& terminal) {
@@ -166,23 +152,22 @@ auto Generator::generate_if(const AST::If& ifStatement) -> void {
   context().labels.pop();
 }
 
-[[nodiscard]] auto Generator::get_identifier(const AST::Expression& expression) -> const std::string& {
-  return belt::overloaded_visit<const std::string&>(
-      expression.value,
-      [&](const std::unique_ptr<AST::Terminal>& terminal) -> const std::string& {
-        return get_identifier(*terminal);
-      },
-      [&](const std::unique_ptr<AST::Declaration>& declaration) -> const std::string& {
-        return get_identifier(*declaration);
-      },
-      [](const AST::String&) -> const std::string& { throw std::runtime_error("Invalid Expression"); },
-      [](const std::unique_ptr<AST::BinaryExpression>&) -> const std::string& {
-        throw std::runtime_error("Invalid Expression");
-      },
-      [](const std::unique_ptr<AST::Push>&) -> const std::string& {
-        throw std::runtime_error("Invalid Expression");
-      },
-      [](std::nullptr_t) -> const std::string& { throw std::runtime_error("Invalid Expression"); });
+std::string        temp = "";
+[[nodiscard]] auto Generator::get_identifier(const AST::Expression&) -> const std::string& {
+  return temp;
+  // return belt::overloaded_visit<const std::string&>(
+  //     expression.value,
+  //     [&](const std::unique_ptr<AST::Terminal>& terminal) -> const std::string& {
+  //       return get_identifier(*terminal);
+  //     },
+  //     [&](const std::unique_ptr<AST::Declaration>& declaration) -> const std::string& {
+  //       return get_identifier(*declaration);
+  //     },
+  //     [](const AST::String&) -> const std::string& { throw std::runtime_error("Invalid Expression"); },
+  //     [](const std::unique_ptr<AST::Push>&) -> const std::string& {
+  //       throw std::runtime_error("Invalid Expression");
+  //     },
+  //     [](std::nullptr_t) -> const std::string& { throw std::runtime_error("Invalid Expression"); });
 }
 
 [[nodiscard]] auto Generator::get_identifier(const AST::Assignment& assignment) -> const std::string& {

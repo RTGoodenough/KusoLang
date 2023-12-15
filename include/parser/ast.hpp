@@ -15,20 +15,36 @@ class AST {
   NON_COPYABLE(AST)
 
  public:
-  enum class BinaryOp;
+  enum class BinaryOp {
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOD,
+    POW,
+    EQ,
+    NEQ,
+    LT,
+    GT,
+    LTE,
+    GTE,
+  };
+
   struct Terminal;
   struct Declaration;
-  struct BinaryExpression;
   struct Return;
   struct Push;
   struct Print;
   struct Assignment;
+
   struct Expression;
   struct Equality;
   struct Comparison;
   struct Term;
   struct Factor;
   struct Unary;
+  struct Primary;
+
   struct Statement;
   struct Exit;
   struct String;
@@ -48,23 +64,9 @@ class AST {
  private:
   std::vector<Statement> _statements;
 
-  [[nodiscard]] static auto to_char(BinaryOp) -> char;
+  [[nodiscard]] static auto to_string(BinaryOp) -> std::string;
 };
 
-enum class AST::BinaryOp {
-  ADD,
-  SUB,
-  MUL,
-  DIV,
-  MOD,
-  POW,
-  EQ,
-  NEQ,
-  LT,
-  GT,
-  LTE,
-  GTE,
-};
 struct AST::Terminal {
   Token token;
 };
@@ -76,106 +78,98 @@ struct AST::String {
 struct AST::Exit {
   std::unique_ptr<Expression> value;
 
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Declaration {
   std::unique_ptr<Terminal> name;
   std::unique_ptr<Terminal> type;
 
-  [[nodiscard]] auto to_string() const -> std::string;
-};
-struct AST::BinaryExpression {
-  std::variant<std::unique_ptr<Expression>> left;
-  std::variant<std::unique_ptr<Expression>> right;
-  BinaryOp                                  op;
-
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Return {
   std::unique_ptr<Expression> value;
 
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Push {
   std::unique_ptr<Expression> value;
   std::unique_ptr<Expression> dest;
 
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Assignment {
   std::variant<std::unique_ptr<Terminal>, std::unique_ptr<Declaration>> dest;
   std::unique_ptr<Expression>                                           value;
 
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Print {
   std::unique_ptr<Expression> value;
 
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Expression {
-  enum class Type {
-    L_VALUE,
-    R_VALUE,
-  };
+  std::unique_ptr<Equality> value;
 
-  std::variant<std::unique_ptr<BinaryExpression>, std::unique_ptr<Terminal>, std::unique_ptr<Declaration>,
-               std::unique_ptr<Push>, AST::String>
-      value;
-
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Equality {
-  std::unique_ptr<Expression> left;
-  std::unique_ptr<Expression> right;
+  std::unique_ptr<Comparison> left;
+  std::unique_ptr<Comparison> right;
   bool                        equal;
 
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Comparison {
-  std::unique_ptr<Expression> left;
-  std::unique_ptr<Expression> right;
-  BinaryOp                    op;
+  std::unique_ptr<Term> left;
+  std::unique_ptr<Term> right;
+  BinaryOp              op;
 
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Term {
-  std::unique_ptr<Expression> left;
-  std::unique_ptr<Expression> right;
-  BinaryOp                    op;
+  std::unique_ptr<Factor> left;
+  std::unique_ptr<Factor> right;
+  BinaryOp                op;
 
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Factor {
-  std::unique_ptr<Expression> left;
-  std::unique_ptr<Expression> right;
-  BinaryOp                    op;
+  std::unique_ptr<Unary> left;
+  std::unique_ptr<Unary> right;
+  BinaryOp               op;
 
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Unary {
-  std::unique_ptr<Expression> value;
-  BinaryOp                    op;
+  std::variant<std::unique_ptr<Unary>, std::unique_ptr<Primary>> value;
+  BinaryOp                                                       op;
 
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
+};
+
+struct AST::Primary {
+  std::variant<std::unique_ptr<Terminal>, std::unique_ptr<Expression>, std::unique_ptr<String>> value;
+
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::If {
   std::unique_ptr<Expression> condition;
   std::vector<Statement>      body;
 
-  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Statement {

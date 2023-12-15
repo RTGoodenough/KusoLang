@@ -19,7 +19,9 @@ auto main(int argc, const char** argv) -> int {
   kuso::Generator generator(outpath);
 
   auto ast = parser.parse();
-  generator.generate(ast);
+  std::cout << ast.to_string() << '\n';
+
+  // generator.generate(ast);
 
   return 0;
 }
