@@ -28,6 +28,7 @@ class AST {
     GT,
     LTE,
     GTE,
+    NOT,
   };
 
   struct Terminal;
@@ -64,7 +65,7 @@ class AST {
  private:
   std::vector<Statement> _statements;
 
-  [[nodiscard]] static auto to_string(BinaryOp) -> std::string;
+  [[nodiscard]] static auto op_to_string(BinaryOp) -> std::string;
 };
 
 struct AST::Terminal {

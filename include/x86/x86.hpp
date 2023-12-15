@@ -20,6 +20,7 @@ enum class Op {
   ADD,
   SUB,
   MUL,
+  IMUL,
   DIV,
   MOD,
   AND,
@@ -165,6 +166,8 @@ enum class Op {
       return "sub";
     case Op::MUL:
       return "mul";
+    case Op::IMUL:
+      return "imul";
     case Op::DIV:
       return "div";
     case Op::MOD:

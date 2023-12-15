@@ -197,8 +197,8 @@ auto Parser::parse_unary(Token& token, Tokens& tokens) -> std::unique_ptr<AST::U
       case Token::Type::MINUS:
         unary->op = AST::BinaryOp::SUB;
         break;
-      case Token::Type::PLUS:
-        unary->op = AST::BinaryOp::ADD;
+      case Token::Type::EXCLAMATION:
+        unary->op = AST::BinaryOp::NOT;
         break;
       default:
         break;

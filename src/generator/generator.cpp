@@ -80,8 +80,75 @@ void Generator::generate_assignment(const AST::Assignment& assignment) {
   emit(x86::Op::MOV, variableIter->second.location, x86::Register::RAX);
 }
 
-void Generator::generate_expression(const AST::Expression&) {
-  // TODO(rolland): implement
+void Generator::generate_expression(const AST::Expression& expression) {
+  generate_expression(*expression.value);
+}
+
+void Generator::generate_expression(const AST::Equality& equality) {
+  if (equality.right) {
+    generate_expression(*equality.right);
+    emit(x86::Op::MOV, x86::Register::RDX, x86::Register::RAX);
+  }
+  generate_expression(*equality.left);
+
+  if (equality.right) emit(x86::Op::CMP, x86::Register::RAX, x86::Register::RDX);
+}
+
+void Generator::generate_expression(const AST::Comparison& comparison) {
+  if (comparison.right) {
+    generate_expression(*comparison.right);
+    emit(x86::Op::MOV, x86::Register::RDX, x86::Register::RAX);
+  }
+  generate_expression(*comparison.left);
+  if (comparison.right) emit(x86::Op::CMP, x86::Register::RAX, x86::Register::RDX);
+}
+
+void Generator::generate_expression(const AST::Term& term) {
+  if (term.right) {
+    generate_expression(*term.right);
+    emit(x86::Op::MOV, x86::Register::RDX, x86::Register::RAX);
+  }
+  generate_expression(*term.left);
+
+  if (term.right) {
+    if (term.op == AST::BinaryOp::ADD)
+      emit(x86::Op::ADD, x86::Register::RAX, x86::Register::RDX);
+    else if (term.op == AST::BinaryOp::SUB)
+      emit(x86::Op::SUB, x86::Register::RAX, x86::Register::RDX);
+    else
+      std::cout << "Invalid Term Op\n" + term.to_string(0) << std::endl;
+  }
+}
+
+void Generator::generate_expression(const AST::Factor& factor) {
+  if (factor.right) {
+    generate_expression(*factor.right);
+    emit(x86::Op::MOV, x86::Register::RDX, x86::Register::RAX);
+  }
+  generate_expression(*factor.left);
+
+  if (factor.right) {
+    if (factor.op == AST::BinaryOp::MUL)
+      emit(x86::Op::IMUL, x86::Register::RAX, x86::Register::RDX);
+    else if (factor.op == AST::BinaryOp::DIV)
+      emit(x86::Op::DIV, x86::Register::RAX, x86::Register::RDX);
+  }
+}
+
+void Generator::generate_expression(const AST::Unary& unary) {
+  belt::overloaded_visit(
+      unary.value, [&](const std::unique_ptr<AST::Primary>& primary) { generate_expression(*primary); },
+      [&](const std::unique_ptr<AST::Unary>& unary) { generate_expression(*unary); }, [](std::nullptr_t) {});
+  if (unary.op == AST::BinaryOp::SUB || unary.op == AST::BinaryOp::NOT) {
+    emit(x86::Op::NEG, x86::Register::RAX);
+  }
+}
+
+void Generator::generate_expression(const AST::Primary& primary) {
+  belt::overloaded_visit(
+      primary.value, [&](const std::unique_ptr<AST::Terminal>& terminal) { generate_expression(*terminal); },
+      [&](const std::unique_ptr<AST::Expression>& expression) { generate_expression(*expression); },
+      [&](const std::unique_ptr<AST::String>& string) { generate_string(*string); });
 }
 
 void Generator::generate_expression(const AST::Terminal& terminal) {
@@ -139,35 +206,18 @@ void Generator::generate_string(const AST::String& string) {
   emit(x86::Op::MOV, x86::Register::RDX, x86::Literal{static_cast<int>(replacedStr.length())});
 }
 
-auto Generator::generate_if(const AST::If& ifStatement) -> void {
-  generate_expression(*ifStatement.condition);
-  emit(x86::Op::CMP, x86::Register::RAX, x86::Literal{0});
-  auto label = fmt::format("if_{}", context().labels.size());
-  context().labels.push(label);
-  emit(x86::Op::JE, label);
-  for (const auto& statement : ifStatement.body) {
-    generate(statement);
-  }
-  emit(label + ":");
-  context().labels.pop();
-}
-
-std::string        temp = "";
-[[nodiscard]] auto Generator::get_identifier(const AST::Expression&) -> const std::string& {
-  return temp;
-  // return belt::overloaded_visit<const std::string&>(
-  //     expression.value,
-  //     [&](const std::unique_ptr<AST::Terminal>& terminal) -> const std::string& {
-  //       return get_identifier(*terminal);
-  //     },
-  //     [&](const std::unique_ptr<AST::Declaration>& declaration) -> const std::string& {
-  //       return get_identifier(*declaration);
-  //     },
-  //     [](const AST::String&) -> const std::string& { throw std::runtime_error("Invalid Expression"); },
-  //     [](const std::unique_ptr<AST::Push>&) -> const std::string& {
-  //       throw std::runtime_error("Invalid Expression");
-  //     },
-  //     [](std::nullptr_t) -> const std::string& { throw std::runtime_error("Invalid Expression"); });
+auto Generator::generate_if(const AST::If&) -> void {
+  throw std::runtime_error("Ifs Not Implemented");
+  // generate_expression(*ifStatement.condition);
+  // emit(x86::Op::CMP, x86::Register::RAX, x86::Literal{0});
+  // auto label = fmt::format("if_{}", context().labels.size());
+  // context().labels.push(label);
+  // emit(x86::Op::JE, label);
+  // for (const auto& statement : ifStatement.body) {
+  //   generate(statement);
+  // }
+  // emit(label + ":");
+  // context().labels.pop();
 }
 
 [[nodiscard]] auto Generator::get_identifier(const AST::Assignment& assignment) -> const std::string& {

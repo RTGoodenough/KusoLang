@@ -65,6 +65,14 @@ class Generator {
 
   void generate_expression(const AST::Expression&);
   void generate_expression(const AST::Terminal&);
+
+  void generate_expression(const AST::Equality&);
+  void generate_expression(const AST::Comparison&);
+  void generate_expression(const AST::Term&);
+  void generate_expression(const AST::Factor&);
+  void generate_expression(const AST::Unary&);
+  void generate_expression(const AST::Primary&);
+
   void generate_string(const AST::String&);
 
   void new_context();
@@ -73,7 +81,6 @@ class Generator {
   [[nodiscard]] auto get_type_id(const std::string&) -> int;
   [[nodiscard]] auto get_type(int) -> Type_t;
 
-  [[nodiscard]] static auto get_identifier(const AST::Expression&) -> const std::string&;
   [[nodiscard]] static auto get_identifier(const AST::Terminal&) -> const std::string&;
   [[nodiscard]] static auto get_identifier(const AST::Declaration&) -> const std::string&;
   [[nodiscard]] static auto get_identifier(const AST::Assignment&) -> const std::string&;

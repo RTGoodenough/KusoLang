@@ -21,7 +21,7 @@ auto main(int argc, const char** argv) -> int {
   auto ast = parser.parse();
   std::cout << ast.to_string() << '\n';
 
-  // generator.generate(ast);
+  generator.generate(ast);
 
   return 0;
 }
