@@ -1,6 +1,7 @@
 #pragma once
 
 #include "x86/addressing.hpp"
+#include "x86/x86.hpp"
 
 namespace kuso {
 struct Type_t {

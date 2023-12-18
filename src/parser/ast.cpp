@@ -30,8 +30,9 @@ void AST::add_statement(Statement&& statement) { _statements.emplace_back(std::m
 
 auto AST::op_to_string(BinaryOp type) -> std::string {
   static const std::unordered_map<BinaryOp, std::string> OPERATORS{
-      {BinaryOp::ADD, "+"}, {BinaryOp::SUB, "-"}, {BinaryOp::MUL, "*"},
-      {BinaryOp::DIV, "/"}, {BinaryOp::MOD, "%"}, {BinaryOp::POW, "^"},
+      {BinaryOp::ADD, "+"}, {BinaryOp::SUB, "-"}, {BinaryOp::MUL, "*"},  {BinaryOp::DIV, "/"},
+      {BinaryOp::MOD, "%"}, {BinaryOp::POW, "^"}, {BinaryOp::GTE, ">="}, {BinaryOp::LTE, "<="},
+      {BinaryOp::GT, ">"},  {BinaryOp::LT, "<"},  {BinaryOp::EQ, "=="},  {BinaryOp::NEQ, "!="},
   };
   auto oper = OPERATORS.find(type);
   if (oper == OPERATORS.end()) {
@@ -50,16 +51,8 @@ auto AST::end() const -> const_iterator { return _statements.end(); }
 // ----------------------------------------- NODE TYPES ------------------------------------------------------
 
 auto AST::Assignment::to_string(int indent) const -> std::string {
-  return belt::overloaded_visit<std::string>(
-             dest,
-             [&](const std::unique_ptr<Terminal>& terminal) {
-               return fmt::format("\n{: >{}}", "", indent) + terminal->token.value;
-             },
-             [&](const std::unique_ptr<Declaration>& declaration) {
-               return fmt::format("\n{: >{}}", "", indent) + declaration->name->token.value + " as " +
-                      declaration->type->token.value;
-             }) +
-         " = " + value->to_string(indent + 1) + '\n';
+  return fmt::format("\n{: >{}}", "", indent) + dest->token.value + " = " + value->to_string(indent + 1) +
+         '\n';
 }
 
 auto AST::Expression::to_string(int indent) const -> std::string {
@@ -67,7 +60,8 @@ auto AST::Expression::to_string(int indent) const -> std::string {
 }
 
 auto AST::Declaration::to_string(int indent) const -> std::string {
-  return fmt::format("\n{: >{}}Declaration:", "", indent) + name->token.value + " as " + type->token.value;
+  return fmt::format("\n{: >{}}Declaration:", "", indent) + name->token.value + " as " + type->token.value +
+         value->to_string(indent + 1) + '\n';
 }
 
 auto AST::Push::to_string(int) const -> std::string { return "push "; }

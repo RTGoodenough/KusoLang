@@ -115,16 +115,16 @@ auto Lexer::parse_token() -> Token {
       return Token(Token::Type::TILDE, _line, _column);
       break;
     case '!':
-      return Token(Token::Type::EXCLAMATION, _line, _column);
+      return replace_not_equal();
       break;
     case '?':
       return Token(Token::Type::QUESTION, _line, _column);
       break;
     case '<':
-      return Token(Token::Type::LESS_THAN, _line, _column);
+      return replace_gt_lt(false);
       break;
     case '>':
-      return Token(Token::Type::GREATER_THAN, _line, _column);
+      return replace_gt_lt(true);
       break;
     case '=':
       return replace_bool_equal();
@@ -221,10 +221,36 @@ auto Lexer::replace_bool_equal() -> Token {
   if (_source.peek_char() == '=') {
     _source.next_char();
     ++_column;
-    return Token(Token::Type::BOOL_EQUAl, _line, _column);
+    return Token(Token::Type::BOOL_EQUAL, _line, _column);
   }
 
   return Token(Token::Type::EQUAL, _line, _column);
+}
+
+auto Lexer::replace_gt_lt(bool greater) -> Token {
+  if (_source.peek_char() == '=') {
+    _source.next_char();
+    ++_column;
+    if (greater) {
+      return Token(Token::Type::GREATER_THAN_EQUAL, _line, _column);
+    }
+    return Token(Token::Type::LESS_THAN_EQUAL, _line, _column);
+  }
+
+  if (greater) {
+    return Token(Token::Type::GREATER_THAN, _line, _column);
+  }
+  return Token(Token::Type::LESS_THAN, _line, _column);
+}
+
+auto Lexer::replace_not_equal() -> Token {
+  if (_source.peek_char() == '=') {
+    _source.next_char();
+    ++_column;
+    return Token(Token::Type::NOT_EQUAL, _line, _column);
+  }
+
+  return Token(Token::Type::EXCLAMATION, _line, _column);
 }
 
 auto Lexer::is_keyword(const std::string& value) -> bool {

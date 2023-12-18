@@ -14,7 +14,73 @@ struct Literal {
 };
 
 enum Size { BYTE = 1, WORD = 2, DWORD = 4, QWORD = 8 };
-enum class Register { RAX, RBX, RCX, RDX, RSI, RDI, RSP, RBP, R8, R9, R10, R11, R12, R13, R14, R15, NONE };
+enum class Register {
+  RAX,
+  RBX,
+  RCX,
+  RDX,
+  RSI,
+  RDI,
+  RSP,
+  RBP,
+  R8,
+  R9,
+  R10,
+  R11,
+  R12,
+  R13,
+  R14,
+  R15,
+  NONE,
+  EAX,
+  EBX,
+  ECX,
+  EDX,
+  ESI,
+  EDI,
+  ESP,
+  EBP,
+  R8D,
+  R9D,
+  R10D,
+  R11D,
+  R12D,
+  R13D,
+  R14D,
+  R15D,
+  AX,
+  BX,
+  CX,
+  DX,
+  SI,
+  DI,
+  SP,
+  BP,
+  R8W,
+  R9W,
+  R10W,
+  R11W,
+  R12W,
+  R13W,
+  R14W,
+  R15W,
+  AL,
+  BL,
+  CL,
+  DL,
+  SIL,
+  DIL,
+  SPL,
+  BPL,
+  R8L,
+  R9L,
+  R10L,
+  R11L,
+  R12L,
+  R13L,
+  R14L,
+  R15L
+};
 enum class Op {
   MOV,
   ADD,
@@ -44,7 +110,14 @@ enum class Op {
   POP,
   LEA,
   NOP,
+  MOVZX,
   INT,
+  SETGE,
+  SETE,
+  SETNE,
+  SETG,
+  SETL,
+  SETLE,
   SYSCALL,
   SYSENTER,
   SYSEXIT,
@@ -152,6 +225,104 @@ enum class Op {
       return "r15";
     case Register::NONE:
       break;
+    case Register::EAX:
+      return "eax";
+    case Register::EBX:
+      return "ebx";
+    case Register::ECX:
+      return "ecx";
+    case Register::EDX:
+      return "edx";
+    case Register::ESI:
+      return "esi";
+    case Register::EDI:
+      return "edi";
+    case Register::ESP:
+      return "esp";
+    case Register::EBP:
+      return "ebp";
+    case Register::R8D:
+      return "r8d";
+    case Register::R9D:
+      return "r9d";
+    case Register::R10D:
+      return "r10d";
+    case Register::R11D:
+      return "r11d";
+    case Register::R12D:
+      return "r12d";
+    case Register::R13D:
+      return "r13d";
+    case Register::R14D:
+      return "r14d";
+    case Register::R15D:
+      return "r15d";
+    case Register::AX:
+      return "ax";
+    case Register::BX:
+      return "bx";
+    case Register::CX:
+      return "cx";
+    case Register::DX:
+      return "dx";
+    case Register::SI:
+      return "si";
+    case Register::DI:
+      return "di";
+    case Register::SP:
+      return "sp";
+    case Register::BP:
+      return "bp";
+    case Register::R8W:
+      return "r8w";
+    case Register::R9W:
+      return "r9w";
+    case Register::R10W:
+      return "r10w";
+    case Register::R11W:
+      return "r11w";
+    case Register::R12W:
+      return "r12w";
+    case Register::R13W:
+      return "r13w";
+    case Register::R14W:
+      return "r14w";
+    case Register::R15W:
+      return "r15w";
+    case Register::AL:
+      return "al";
+    case Register::BL:
+      return "bl";
+    case Register::CL:
+      return "cl";
+    case Register::DL:
+      return "dl";
+    case Register::SIL:
+      return "sil";
+    case Register::DIL:
+      return "dil";
+    case Register::SPL:
+      return "spl";
+    case Register::BPL:
+      return "bpl";
+    case Register::R8L:
+      return "r8l";
+    case Register::R9L:
+      return "r9l";
+    case Register::R10L:
+      return "r10l";
+    case Register::R11L:
+      return "r11l";
+    case Register::R12L:
+      return "r12l";
+    case Register::R13L:
+      return "r13l";
+    case Register::R14L:
+      return "r14l";
+    case Register::R15L:
+      return "r15l";
+    default:
+      break;
   }
   throw std::runtime_error("Invalid Register");
 }
@@ -216,6 +387,20 @@ enum class Op {
       return "nop";
     case Op::INT:
       return "int";
+    case Op::SETGE:
+      return "setge";
+    case Op::SETE:
+      return "sete";
+    case Op::SETNE:
+      return "setne";
+    case Op::SETG:
+      return "setg";
+    case Op::SETL:
+      return "setl";
+    case Op::SETLE:
+      return "setle";
+    case Op::MOVZX:
+      return "movzx";
     case Op::SYSCALL:
       return "syscall";
     case Op::SYSENTER:

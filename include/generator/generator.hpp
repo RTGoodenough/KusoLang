@@ -41,11 +41,20 @@ class Generator {
   void init_context();
   void init_data();
 
+  void enter_context();
+  void leave_context();
+
   void add_data(const std::string&, const std::string&);
+
+  void push(x86::Register);
+  void push(x86::Address);
+  void push(x86::Literal);
+  void pop(x86::Register);
   void emit(x86::Op);
   void emit(const std::string&);
   void emit(x86::Op, const std::string&);
   void emit(x86::Op, x86::Register);
+  void emit(x86::Op, x86::Address);
   void emit(x86::Op, x86::Address, x86::Address);
   void emit(x86::Op, x86::Register, x86::Address);
   void emit(x86::Op, x86::Register, x86::Register);
@@ -54,6 +63,8 @@ class Generator {
   void emit(x86::Op, x86::Literal);
   void emit(x86::Op, x86::Address, x86::Literal);
   void emit(x86::Op, x86::Register, x86::Literal);
+
+  void pull_comparison_result(AST::BinaryOp);
 
   void generate(const AST::Statement&);
   void generate_assignment(const AST::Assignment&);
@@ -75,8 +86,7 @@ class Generator {
 
   void generate_string(const AST::String&);
 
-  void new_context();
-  void leave_context();
+  [[nodiscard]] auto next_address() -> x86::Address;
 
   [[nodiscard]] auto get_type_id(const std::string&) -> int;
   [[nodiscard]] auto get_type(int) -> Type_t;

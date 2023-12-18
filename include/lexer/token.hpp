@@ -46,7 +46,7 @@ struct Token {
     LESS_THAN,
     GREATER_THAN,
     EQUAL,
-    BOOL_EQUAl,
+    BOOL_EQUAL,
     NOT_EQUAL,
     LESS_THAN_EQUAL,
     GREATER_THAN_EQUAL,

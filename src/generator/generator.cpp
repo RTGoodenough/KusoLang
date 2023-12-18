@@ -14,6 +14,7 @@
 #include "lexer/token.hpp"
 #include "linux/linux.hpp"
 #include "parser/ast.hpp"
+#include "x86/addressing.hpp"
 #include "x86/x86.hpp"
 
 // TODO(rolland): add semantic errors function
@@ -50,24 +51,17 @@ void Generator::generate_declaration(const AST::Declaration& declaration) {
     throw std::runtime_error("Multiple Declarations of " + name);
   }
 
-  for (auto& variable : current.variables) {
-    variable.second.location.disp += get_type(typeID).size;
+  if (declaration.value) {
+    generate_expression(*declaration.value);
+  } else {
+    push(x86::Literal{0});
   }
-
   current.variables[name] =
       Variable{typeID, {x86::Address::Mode::INDIRECT_DISPLACEMENT, x86::Register::RSP, 0}};
-  emit(x86::Op::PUSH, x86::Literal{0});
-  current.size += get_type(typeID).size;
-  current.stack.disp += get_type(typeID).size;
 }
 
 void Generator::generate_assignment(const AST::Assignment& assignment) {
   // TODO(rolland): check if assignment is valid
-
-  if (std::holds_alternative<std::unique_ptr<AST::Declaration>>(assignment.dest)) {
-    generate_declaration(*std::get<std::unique_ptr<AST::Declaration>>(assignment.dest));
-  }
-
   const auto& name = get_identifier(assignment);
 
   auto variableIter = context().variables.find(name);
@@ -75,8 +69,8 @@ void Generator::generate_assignment(const AST::Assignment& assignment) {
     throw std::runtime_error("Unknown Variable " + name);
   }
 
-  // TODO(rolland): assuming this puts the value in rax
   generate_expression(*assignment.value);
+  pop(x86::Register::RAX);
   emit(x86::Op::MOV, variableIter->second.location, x86::Register::RAX);
 }
 
@@ -87,51 +81,64 @@ void Generator::generate_expression(const AST::Expression& expression) {
 void Generator::generate_expression(const AST::Equality& equality) {
   if (equality.right) {
     generate_expression(*equality.right);
-    emit(x86::Op::MOV, x86::Register::RDX, x86::Register::RAX);
   }
   generate_expression(*equality.left);
 
-  if (equality.right) emit(x86::Op::CMP, x86::Register::RAX, x86::Register::RDX);
+  if (equality.right) {
+    pop(x86::Register::RAX);
+    pop(x86::Register::RDX);
+    emit(x86::Op::CMP, x86::Register::RAX, x86::Register::RDX);
+    pull_comparison_result(equality.equal ? AST::BinaryOp::EQ : AST::BinaryOp::NEQ);
+    push(x86::Register::RAX);
+  }
 }
 
 void Generator::generate_expression(const AST::Comparison& comparison) {
   if (comparison.right) {
     generate_expression(*comparison.right);
-    emit(x86::Op::MOV, x86::Register::RDX, x86::Register::RAX);
   }
   generate_expression(*comparison.left);
-  if (comparison.right) emit(x86::Op::CMP, x86::Register::RAX, x86::Register::RDX);
+
+  if (comparison.right) {
+    pop(x86::Register::RAX);
+    pop(x86::Register::RDX);
+    emit(x86::Op::CMP, x86::Register::RAX, x86::Register::RDX);
+    pull_comparison_result(comparison.op);
+    push(x86::Register::RAX);
+  }
 }
 
 void Generator::generate_expression(const AST::Term& term) {
   if (term.right) {
     generate_expression(*term.right);
-    emit(x86::Op::MOV, x86::Register::RDX, x86::Register::RAX);
   }
   generate_expression(*term.left);
 
   if (term.right) {
+    pop(x86::Register::RAX);
+    pop(x86::Register::RDX);
     if (term.op == AST::BinaryOp::ADD)
       emit(x86::Op::ADD, x86::Register::RAX, x86::Register::RDX);
     else if (term.op == AST::BinaryOp::SUB)
       emit(x86::Op::SUB, x86::Register::RAX, x86::Register::RDX);
-    else
-      std::cout << "Invalid Term Op\n" + term.to_string(0) << std::endl;
+    push(x86::Register::RAX);
   }
 }
 
 void Generator::generate_expression(const AST::Factor& factor) {
   if (factor.right) {
     generate_expression(*factor.right);
-    emit(x86::Op::MOV, x86::Register::RDX, x86::Register::RAX);
   }
   generate_expression(*factor.left);
 
   if (factor.right) {
+    pop(x86::Register::RAX);
+    pop(x86::Register::RDX);
     if (factor.op == AST::BinaryOp::MUL)
       emit(x86::Op::IMUL, x86::Register::RAX, x86::Register::RDX);
     else if (factor.op == AST::BinaryOp::DIV)
       emit(x86::Op::DIV, x86::Register::RAX, x86::Register::RDX);
+    push(x86::Register::RAX);
   }
 }
 
@@ -140,7 +147,9 @@ void Generator::generate_expression(const AST::Unary& unary) {
       unary.value, [&](const std::unique_ptr<AST::Primary>& primary) { generate_expression(*primary); },
       [&](const std::unique_ptr<AST::Unary>& unary) { generate_expression(*unary); }, [](std::nullptr_t) {});
   if (unary.op == AST::BinaryOp::SUB || unary.op == AST::BinaryOp::NOT) {
+    pop(x86::Register::RAX);
     emit(x86::Op::NEG, x86::Register::RAX);
+    push(x86::Register::RAX);
   }
 }
 
@@ -159,18 +168,19 @@ void Generator::generate_expression(const AST::Terminal& terminal) {
       throw std::runtime_error("Unknown Variable " + name);
     }
 
-    // TODO(rolland): move address to rax instead of copying value
     emit(x86::Op::MOV, x86::Register::RAX, variableIter->second.location);
   } else if (terminal.token.type == Token::Type::NUMBER) {
     emit(x86::Op::MOV, x86::Register::RAX, x86::Literal{std::stoi(terminal.token.value)});
   } else {
     throw std::runtime_error("Invalid Terminal");
   }
+  push(x86::Register::RAX);
 }
 
 void Generator::generate_exit(const AST::Exit& exit) {
   if (exit.value) {
     generate_expression(*exit.value);
+    pop(x86::Register::RAX);
   } else {
     emit(x86::Op::MOV, x86::Register::RAX, x86::Literal{0});
   }
@@ -181,6 +191,7 @@ void Generator::generate_exit(const AST::Exit& exit) {
 
 void Generator::generate_print(const AST::Print& print) {
   generate_expression(*print.value);
+  pop(x86::Register::RAX);
   emit(x86::Op::MOV, x86::Register::RSI, x86::Register::RAX);
   emit(x86::Op::MOV, x86::Register::RAX, x86::Literal{lnx::Syscall::WRITE});
   emit(x86::Op::MOV, x86::Register::RDI, x86::Literal{1});
@@ -221,15 +232,7 @@ auto Generator::generate_if(const AST::If&) -> void {
 }
 
 [[nodiscard]] auto Generator::get_identifier(const AST::Assignment& assignment) -> const std::string& {
-  return belt::overloaded_visit<const std::string&>(
-      assignment.dest,
-      [](const std::unique_ptr<AST::Terminal>& terminal) -> const std::string& {
-        return get_identifier(*terminal);
-      },
-      [](const std::unique_ptr<AST::Declaration>& declaration) -> const std::string& {
-        return get_identifier(*declaration);
-      },
-      [](std::nullptr_t) -> const std::string& { throw std::runtime_error("Invalid Assignment"); });
+  return get_identifier(*assignment.dest);
 }
 
 auto Generator::get_identifier(const AST::Terminal& terminal) -> const std::string& {
@@ -242,6 +245,66 @@ auto Generator::get_identifier(const AST::Declaration& declaration) -> const std
 
 auto Generator::get_decl_type(const AST::Declaration& declaration) -> const std::string& {
   return declaration.type->token.value;
+}
+
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% HELPERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+void Generator::enter_context() {
+  auto& current = context();
+  _contexts.emplace(Context{.size = 0,
+                            .stack = x86::Address{x86::Address::Mode::DIRECT, x86::Register::RSP, 0},
+                            .variables = {},
+                            .typeIDs = current.typeIDs,
+                            .types = current.types});
+}
+
+void Generator::leave_context() {
+  auto& current = context();
+  std::for_each(current.variables.begin(), current.variables.end(), [&](auto&) { pop(x86::Register::RAX); });
+  current.stack.disp += current.size;
+  _contexts.pop();
+}
+
+void Generator::push(x86::Address addr) {
+  auto& current = context();
+  emit(x86::Op::PUSH, addr);
+  current.stack.disp -= 8;
+  current.size += 8;
+  for (auto& variable : current.variables) {
+    variable.second.location.disp += 8;
+  }
+}
+
+void Generator::push(x86::Literal lit) {
+  auto& current = context();
+  emit(x86::Op::PUSH, lit);
+  current.stack.disp -= 8;
+  current.size += 8;
+  for (auto& variable : current.variables) {
+    variable.second.location.disp += 8;
+  }
+}
+
+void Generator::push(x86::Register reg) {
+  auto& current = context();
+  emit(x86::Op::PUSH, reg);
+  current.stack.disp -= 8;
+  current.size += 8;
+  for (auto& variable : current.variables) {
+    variable.second.location.disp += 8;
+  }
+}
+
+void Generator::pop(x86::Register reg) {
+  auto& current = context();
+  emit(x86::Op::POP, reg);
+  current.stack.disp += 8;
+  current.size -= 8;
+  for (auto& variable : current.variables) {
+    variable.second.location.disp -= 8;
+  }
 }
 
 void Generator::emit(const std::string& value) { _output_code.append(fmt::format("{}\n", value)); }
@@ -257,6 +320,9 @@ void Generator::emit(x86::Op operation, const std::string& value) {
 void Generator::emit(x86::Op operation, x86::Address dest, x86::Address src) {
   _output_code.append(
       fmt::format("{} {}, {}\n", x86::to_string(operation), dest.to_string(), src.to_string()));
+}
+void Generator::emit(x86::Op operation, x86::Address addr) {
+  _output_code.append(fmt::format("{} {}\n", x86::to_string(operation), addr.to_string()));
 }
 void Generator::emit(x86::Op operation, x86::Register dest, x86::Address src) {
   _output_code.append(
@@ -283,6 +349,32 @@ void Generator::emit(x86::Op operation, x86::Register dest, const std::string& v
 }
 void Generator::emit(x86::Op operation, x86::Literal value) {
   _output_code.append(fmt::format("{} {}\n", x86::to_string(operation), value.to_string()));
+}
+
+void Generator::pull_comparison_result(AST::BinaryOp operation) {
+  switch (operation) {
+    case AST::BinaryOp::EQ:
+      emit(x86::Op::SETE, x86::Register::AL);
+      break;
+    case AST::BinaryOp::NEQ:
+      emit(x86::Op::SETNE, x86::Register::AL);
+      break;
+    case AST::BinaryOp::LT:
+      emit(x86::Op::SETL, x86::Register::AL);
+      break;
+    case AST::BinaryOp::LTE:
+      emit(x86::Op::SETLE, x86::Register::AL);
+      break;
+    case AST::BinaryOp::GT:
+      emit(x86::Op::SETG, x86::Register::AL);
+      break;
+    case AST::BinaryOp::GTE:
+      emit(x86::Op::SETGE, x86::Register::AL);
+      break;
+    default:
+      throw std::runtime_error("Invalid Comparison Operation");
+  }
+  emit(x86::Op::MOVZX, x86::Register::RAX, x86::Register::AL);
 }
 
 void Generator::add_data(const std::string& name, const std::string& value) {
@@ -318,14 +410,12 @@ auto Generator::get_type_id(const std::string& type) -> int {
 }
 
 void Generator::init_context() {
-  _contexts.emplace(Context{
-      .size = 0,
-      .stack = x86::Address{x86::Address::Mode::DIRECT, x86::Register::RSP, 0},
-      .variables = {},
-      .typeIDs = {{"int", 0}, {"byte", 1}, {"str", 2}},
-      .types = {{0, Type_t{x86::Size::QWORD}}, {1, Type_t{1}}, {2, Type_t{x86::Size::QWORD}}},
-      .labels = {},
-  });
+  _contexts.emplace(
+      Context{.size = 0,
+              .stack = x86::Address{x86::Address::Mode::DIRECT, x86::Register::RSP, 0},
+              .variables = {},
+              .typeIDs = {{"int", 0}, {"byte", 1}, {"str", 2}},
+              .types = {{0, Type_t{x86::Size::QWORD}}, {1, Type_t{1}}, {2, Type_t{x86::Size::QWORD}}}});
 }
 
 void Generator::init_data() { _output_data = "section   .data\n"; }

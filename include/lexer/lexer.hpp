@@ -35,6 +35,8 @@ class Lexer {
   [[nodiscard]] static auto replace_keyword_type(const std::string&) -> Token::Type;
 
   [[nodiscard]] auto replace_bool_equal() -> Token;
+  [[nodiscard]] auto replace_gt_lt(bool) -> Token;
+  [[nodiscard]] auto replace_not_equal() -> Token;
 
   [[nodiscard]] auto skip_comments() -> char;
   [[nodiscard]] auto parse_identifier(char) -> Token;

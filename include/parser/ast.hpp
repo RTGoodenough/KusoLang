@@ -83,8 +83,9 @@ struct AST::Exit {
 };
 
 struct AST::Declaration {
-  std::unique_ptr<Terminal> name;
-  std::unique_ptr<Terminal> type;
+  std::unique_ptr<Terminal>   name;
+  std::unique_ptr<Terminal>   type;
+  std::unique_ptr<Expression> value;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
@@ -103,8 +104,8 @@ struct AST::Push {
 };
 
 struct AST::Assignment {
-  std::variant<std::unique_ptr<Terminal>, std::unique_ptr<Declaration>> dest;
-  std::unique_ptr<Expression>                                           value;
+  std::unique_ptr<Terminal>   dest;
+  std::unique_ptr<Expression> value;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
@@ -123,32 +124,32 @@ struct AST::Expression {
 
 struct AST::Equality {
   std::unique_ptr<Comparison> left;
-  std::unique_ptr<Comparison> right;
+  std::unique_ptr<Equality>   right;
   bool                        equal;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Comparison {
-  std::unique_ptr<Term> left;
-  std::unique_ptr<Term> right;
-  BinaryOp              op;
+  std::unique_ptr<Term>       left;
+  std::unique_ptr<Comparison> right;
+  BinaryOp                    op;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Term {
   std::unique_ptr<Factor> left;
-  std::unique_ptr<Factor> right;
+  std::unique_ptr<Term>   right;
   BinaryOp                op;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Factor {
-  std::unique_ptr<Unary> left;
-  std::unique_ptr<Unary> right;
-  BinaryOp               op;
+  std::unique_ptr<Unary>  left;
+  std::unique_ptr<Factor> right;
+  BinaryOp                op;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };

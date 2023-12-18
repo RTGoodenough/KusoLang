@@ -42,8 +42,7 @@ class Parser {
   [[nodiscard]] auto parse_unary(Token&, Tokens&) -> std::unique_ptr<AST::Unary>;
   [[nodiscard]] auto parse_primary(Token&, Tokens&) -> std::unique_ptr<AST::Primary>;
 
-  [[nodiscard]] auto parse_assignment(Token&, std::optional<std::unique_ptr<AST::Declaration>>, Tokens&)
-      -> std::unique_ptr<AST::Assignment>;
+  [[nodiscard]] auto parse_assignment(Token&, Tokens&) -> std::unique_ptr<AST::Assignment>;
   [[nodiscard]] auto parse_push(Token&, Tokens&) -> std::unique_ptr<AST::Push>;
   [[nodiscard]] auto parse_return(Token&, Tokens&) -> std::unique_ptr<AST::Return>;
   [[nodiscard]] auto parse_declaration(Token&, Tokens&) -> std::unique_ptr<AST::Declaration>;

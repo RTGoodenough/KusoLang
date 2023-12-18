@@ -14,6 +14,5 @@ struct Context {
   std::map<std::string, Variable> variables;
   std::map<std::string, int>      typeIDs;
   std::map<int, Type_t>           types;
-  std::stack<std::string>         labels;
 };
 }  // namespace kuso

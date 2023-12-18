@@ -21,7 +21,7 @@ void Parser::syntax_error(const Token& token, const Token& expected) {
 }
 
 auto Parser::parse() -> AST {
-  // std::cout << "parse\n";
+  std::cout << "parse\n";
   AST  ast;
   auto tokens = _lexer.by_token();
   consume(tokens);
@@ -37,7 +37,7 @@ auto Parser::parse() -> AST {
 }
 
 auto Parser::parse_statement(Tokens& tokens) -> AST::Statement {
-  // std::cout << "parse_statement\n";
+  std::cout << "parse_statement\n";
   AST::Statement statement{nullptr};
   auto           token = consume(tokens);
 
@@ -46,13 +46,13 @@ auto Parser::parse_statement(Tokens& tokens) -> AST::Statement {
   switch (token.type) {
     case Token::Type::IDENTIFIER:
       if (_lookahead.type == Token::Type::COLON) {
-        decl = parse_declaration(token, tokens);
-      }
-      if (_lookahead.type == Token::Type::EQUAL) {
-        statement.statement = parse_assignment(token, std::move(decl), tokens);
+        statement.statement = parse_declaration(token, tokens);
         break;
       }
-      if (decl) statement.statement = std::move(decl.value());
+      if (_lookahead.type == Token::Type::EQUAL) {
+        statement.statement = parse_assignment(token, tokens);
+        break;
+      }
       break;
     case Token::Type::RETURN:
       statement.statement = parse_return(token, tokens);
@@ -75,7 +75,7 @@ auto Parser::parse_statement(Tokens& tokens) -> AST::Statement {
 }
 
 auto Parser::parse_if(Token& token, Tokens& tokens) -> std::unique_ptr<AST::If> {
-  // std::cout << "parse_if\n";
+  std::cout << "parse_if\n";
   // TODO(rolland): add else to if statements
   auto ifStatement = std::make_unique<AST::If>();
 
@@ -94,25 +94,25 @@ auto Parser::parse_if(Token& token, Tokens& tokens) -> std::unique_ptr<AST::If> 
 }
 
 auto Parser::parse_expression(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Expression> {
-  // std::cout << "parse_expression\n";
+  std::cout << "parse_expression\n";
   return std::make_unique<AST::Expression>(parse_equality(token, tokens));
 }
 
 auto Parser::parse_equality(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Equality> {
-  // std::cout << "parse_equality\n";
+  std::cout << "parse_equality\n";
   auto equality = std::make_unique<AST::Equality>();
   equality->left = parse_comparison(token, tokens);
 
-  while (match({Token::Type::BOOL_EQUAl, Token::Type::NOT_EQUAL}, token, tokens)) {
-    equality->equal = token.type == Token::Type::BOOL_EQUAl;
-    equality->right = parse_comparison(token, tokens);
+  while (match({Token::Type::BOOL_EQUAL, Token::Type::NOT_EQUAL}, token, tokens)) {
+    equality->equal = token.type == Token::Type::BOOL_EQUAL;
+    equality->right = parse_equality(token, tokens);
   }
 
   return equality;
 }
 
 auto Parser::parse_comparison(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Comparison> {
-  // std::cout << "parse_comparison\n";
+  std::cout << "parse_comparison\n";
   auto comparison = std::make_unique<AST::Comparison>();
   comparison->left = parse_term(token, tokens);
 
@@ -135,14 +135,14 @@ auto Parser::parse_comparison(Token& token, Tokens& tokens) -> std::unique_ptr<A
       default:
         break;
     }
-    comparison->right = parse_term(token, tokens);
+    comparison->right = parse_comparison(token, tokens);
   }
 
   return comparison;
 }
 
 auto Parser::parse_term(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Term> {
-  // std::cout << "parse_term\n";
+  std::cout << "parse_term\n";
   auto term = std::make_unique<AST::Term>();
   term->left = parse_factor(token, tokens);
 
@@ -157,14 +157,14 @@ auto Parser::parse_term(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Te
       default:
         break;
     }
-    term->right = parse_factor(token, tokens);
+    term->right = parse_term(token, tokens);
   }
 
   return term;
 }
 
 auto Parser::parse_factor(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Factor> {
-  // std::cout << "parse_factor\n";
+  std::cout << "parse_factor\n";
   auto factor = std::make_unique<AST::Factor>();
   factor->left = parse_unary(token, tokens);
 
@@ -182,17 +182,17 @@ auto Parser::parse_factor(Token& token, Tokens& tokens) -> std::unique_ptr<AST::
       default:
         break;
     }
-    factor->right = parse_unary(token, tokens);
+    factor->right = parse_factor(token, tokens);
   }
 
   return factor;
 }
 
 auto Parser::parse_unary(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Unary> {
-  // std::cout << "parse_unary\n";
+  std::cout << "parse_unary\n";
   auto unary = std::make_unique<AST::Unary>();
 
-  if (match({Token::Type::MINUS, Token::Type::EXCLAMATION}, token, tokens)) {
+  while (match({Token::Type::MINUS, Token::Type::EXCLAMATION}, token, tokens)) {
     switch (token.type) {
       case Token::Type::MINUS:
         unary->op = AST::BinaryOp::SUB;
@@ -204,14 +204,14 @@ auto Parser::parse_unary(Token& token, Tokens& tokens) -> std::unique_ptr<AST::U
         break;
     }
     unary->value = parse_unary(token, tokens);
-  } else {
-    unary->value = parse_primary(token, tokens);
   }
+  unary->value = parse_primary(token, tokens);
+
   return unary;
 }
 
 auto Parser::parse_primary(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Primary> {
-  // std::cout << "parse_primary\n";
+  std::cout << "parse_primary\n";
   auto primary = std::make_unique<AST::Primary>();
 
   if (match({Token::Type::STRING}, token, tokens)) {
@@ -233,15 +233,11 @@ auto Parser::parse_primary(Token& token, Tokens& tokens) -> std::unique_ptr<AST:
   syntax_error(token, Token(Token::Type::IDENTIFIER));
 }
 
-auto Parser::parse_assignment(Token& dest, std::optional<std::unique_ptr<AST::Declaration>> decl,
-                              Tokens& tokens) -> std::unique_ptr<AST::Assignment> {
-  // std::cout << "parse_assignment\n";
+auto Parser::parse_assignment(Token& dest, Tokens& tokens) -> std::unique_ptr<AST::Assignment> {
+  std::cout << "parse_assignment\n";
   auto assignment = std::make_unique<AST::Assignment>();
 
-  if (decl.has_value())
-    assignment->dest = std::move(decl.value());
-  else
-    assignment->dest = std::make_unique<AST::Terminal>(dest);
+  assignment->dest = std::make_unique<AST::Terminal>(dest);
 
   match({Token::Type::EQUAL}, dest, tokens);
 
@@ -251,7 +247,7 @@ auto Parser::parse_assignment(Token& dest, std::optional<std::unique_ptr<AST::De
 }
 
 auto Parser::parse_exit(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Exit> {
-  // std::cout << "parse_exit\n";
+  std::cout << "parse_exit\n";
   auto exit = std::make_unique<AST::Exit>();
   exit->value = parse_expression(token, tokens);
 
@@ -259,12 +255,12 @@ auto Parser::parse_exit(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Ex
 }
 
 auto Parser::parse_push(Token&, Tokens&) -> std::unique_ptr<AST::Push> {
-  // std::cout << "parse_push\n";
+  std::cout << "parse_push\n";
   throw std::runtime_error("Pushes Not implemented");
 }
 
 auto Parser::parse_declaration(Token& dest, Tokens& tokens) -> std::unique_ptr<AST::Declaration> {
-  // std::cout << "parse_declaration\n";
+  std::cout << "parse_declaration\n";
   std::unique_ptr<AST::Declaration> declaration = std::make_unique<AST::Declaration>();
 
   declaration->name = std::make_unique<AST::Terminal>(dest);
@@ -273,11 +269,16 @@ auto Parser::parse_declaration(Token& dest, Tokens& tokens) -> std::unique_ptr<A
   match({Token::Type::IDENTIFIER}, dest, tokens);
 
   declaration->type = std::make_unique<AST::Terminal>(dest);
+
+  if (match({Token::Type::EQUAL}, dest, tokens)) {
+    declaration->value = parse_expression(dest, tokens);
+  }
+
   return declaration;
 }
 
 auto Parser::parse_return(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Return> {
-  // std::cout << "parse_return\n";
+  std::cout << "parse_return\n";
   auto returnStatement = std::make_unique<AST::Return>();
 
   returnStatement->value = parse_expression(token, tokens);
@@ -286,7 +287,7 @@ auto Parser::parse_return(Token& token, Tokens& tokens) -> std::unique_ptr<AST::
 }
 
 auto Parser::parse_print(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Print> {
-  // std::cout << "parse_print\n";
+  std::cout << "parse_print\n";
   auto print = std::make_unique<AST::Print>();
 
   print->value = parse_expression(token, tokens);
