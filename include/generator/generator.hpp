@@ -55,6 +55,9 @@ class Generator {
   void emit(x86::Op, const std::string&);
   void emit(x86::Op, x86::Register);
   void emit(x86::Op, x86::Address);
+  void emit(x86::Op, x86::Size, x86::Register);
+  void emit(x86::Op, x86::Size, x86::Address);
+  void emit(x86::Op, x86::Size, x86::Literal);
   void emit(x86::Op, x86::Address, x86::Address);
   void emit(x86::Op, x86::Register, x86::Address);
   void emit(x86::Op, x86::Register, x86::Register);
@@ -72,7 +75,10 @@ class Generator {
   void generate_return(const AST::Return&);
   void generate_exit(const AST::Exit&);
   void generate_print(const AST::Print&);
+
   void generate_if(const AST::If&);
+
+  void generate_while(const AST::While&);
 
   void generate_type(const AST::Type&);
 

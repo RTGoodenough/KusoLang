@@ -22,6 +22,7 @@ auto AST::to_string() const -> std::string {
         [&result](const std::unique_ptr<Return>& return_) { result += return_->value->to_string(0); },
         [&result](const std::unique_ptr<Exit>& exit) { result += exit->value->to_string(0); },
         [&result](const std::unique_ptr<Declaration>& declaration) { result += declaration->to_string(0); },
+        [&result](const std::unique_ptr<While>& while_) { result += while_->to_string(0); },
         [&result](std::nullptr_t) { result += "null\n"; });
   }
   return result;
@@ -65,7 +66,7 @@ auto AST::Declaration::to_string(int indent) const -> std::string {
          (value ? value->to_string(indent + 1) : "") + '\n';
 }
 
-auto AST::Push::to_string(int) -> std::string { return "push "; }
+auto AST::Push::to_string(int) const -> std::string { return "push "; }
 
 auto AST::Return::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Return:", "", indent) + (value ? value->to_string(indent + 1) : "");
@@ -80,7 +81,39 @@ auto AST::Print::to_string(int indent) const -> std::string {
 }
 
 auto AST::If::to_string(int indent) const -> std::string {
-  return fmt::format("\n{: >{}}", "", indent) + condition->to_string(indent + 1) + ":\n";
+  std::string ret = fmt::format("\n{: >{}}If:", "", indent) + condition->to_string(indent + 1) + ":\n";
+  for (const auto& statement : body) {
+    ret += statement.to_string(indent + 1);
+  }
+  if (!elseBody.empty()) {
+    ret += fmt::format("\n{: >{}}else:\n", "", indent);
+    for (const auto& statement : elseBody) {
+      ret += statement.to_string(indent + 1);
+    }
+  }
+  return ret;
+}
+
+auto AST::Statement::to_string(int indent) const -> std::string {
+  return belt::overloaded_visit<std::string>(
+      statement, [&](const std::unique_ptr<Assignment>& assignment) { return assignment->to_string(indent); },
+      [&](const std::unique_ptr<Push>& push) { return push->to_string(indent); },
+      [&](const std::unique_ptr<Type>& type) { return type->to_string(indent); },
+      [&](const std::unique_ptr<If>& if_) { return if_->to_string(indent); },
+      [&](const std::unique_ptr<Print>& print) { return print->value->to_string(indent); },
+      [&](const std::unique_ptr<Return>& return_) { return return_->value->to_string(indent); },
+      [&](const std::unique_ptr<Exit>& exit) { return exit->value->to_string(indent); },
+      [&](const std::unique_ptr<Declaration>& declaration) { return declaration->to_string(indent); },
+      [&](const std::unique_ptr<While>& while_) { return while_->to_string(indent); },
+      [&](std::nullptr_t) { return std::string("null\n"); });
+}
+
+auto AST::While::to_string(int indent) const -> std::string {
+  std::string ret = fmt::format("\n{: >{}}While:", "", indent) + condition->to_string(indent + 1) + ":\n";
+  for (const auto& statement : body) {
+    ret += statement.to_string(indent + 1);
+  }
+  return ret;
 }
 
 auto AST::Comparison::to_string(int indent) const -> std::string {

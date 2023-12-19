@@ -56,6 +56,8 @@ class AST {
   struct String;
   struct If;
 
+  struct While;
+
   using iterator = std::vector<Statement>::iterator;
   using const_iterator = std::vector<Statement>::const_iterator;
 
@@ -101,7 +103,7 @@ struct AST::Push {
   std::unique_ptr<Expression> value;
   std::unique_ptr<Expression> dest;
 
-  [[nodiscard]] static auto to_string(int) -> std::string;
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Assignment {
@@ -186,6 +188,7 @@ struct AST::Variable {
 struct AST::If {
   std::unique_ptr<Expression> condition;
   std::vector<Statement>      body;
+  std::vector<Statement>      elseBody;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
@@ -193,6 +196,13 @@ struct AST::If {
 struct AST::Attribute {
   std::string name;
   std::string type;
+};
+
+struct AST::While {
+  std::unique_ptr<Expression> condition;
+  std::vector<Statement>      body;
+
+  [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
 struct AST::Type {
@@ -205,8 +215,10 @@ struct AST::Type {
 struct AST::Statement {
   std::variant<std::unique_ptr<Type>, std::unique_ptr<If>, std::unique_ptr<Exit>, std::unique_ptr<Assignment>,
                std::unique_ptr<Push>, std::unique_ptr<Declaration>, std::unique_ptr<Return>,
-               std::unique_ptr<Print>, std::nullptr_t>
+               std::unique_ptr<Print>, std::unique_ptr<While>, std::nullptr_t>
       statement;
+
+  [[nodiscard]] auto to_string(int) const -> std::string;
 
   explicit Statement(std::nullptr_t) : statement(nullptr) {}
   explicit Statement(std::unique_ptr<Exit> exit) : statement(std::move(exit)) {}
@@ -215,5 +227,8 @@ struct AST::Statement {
   explicit Statement(std::unique_ptr<Assignment> assignment) : statement(std::move(assignment)) {}
   explicit Statement(std::unique_ptr<Declaration> declaration) : statement(std::move(declaration)) {}
   explicit Statement(std::unique_ptr<Type> type) : statement(std::move(type)) {}
+  explicit Statement(std::unique_ptr<Print> print) : statement(std::move(print)) {}
+  explicit Statement(std::unique_ptr<If> if_) : statement(std::move(if_)) {}
+  explicit Statement(std::unique_ptr<While> while_) : statement(std::move(while_)) {}
 };
 }  // namespace kuso

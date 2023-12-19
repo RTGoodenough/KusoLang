@@ -32,7 +32,7 @@ class Parser {
 
   [[noreturn]] static void syntax_error(const Token&, const Token&);
 
-  [[nodiscard]] auto parse_statement(Tokens&) -> AST::Statement;
+  [[nodiscard]] auto parse_statement(Token&, Tokens&) -> AST::Statement;
   [[nodiscard]] auto parse_exit(Token&, Tokens&) -> std::unique_ptr<AST::Exit>;
 
   [[nodiscard]] auto parse_expression(Token&, Tokens&) -> std::unique_ptr<AST::Expression>;
@@ -52,6 +52,8 @@ class Parser {
   [[nodiscard]] auto parse_return(Token&, Tokens&) -> std::unique_ptr<AST::Return>;
   [[nodiscard]] auto parse_declaration(Token&, Tokens&) -> std::unique_ptr<AST::Declaration>;
   [[nodiscard]] auto parse_print(Token&, Tokens&) -> std::unique_ptr<AST::Print>;
+
   [[nodiscard]] auto parse_if(Token&, Tokens&) -> std::unique_ptr<AST::If>;
+  [[nodiscard]] auto parse_while(Token&, Tokens&) -> std::unique_ptr<AST::While>;
 };
 }  // namespace kuso

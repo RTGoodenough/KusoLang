@@ -26,6 +26,9 @@ void Generator::generate(const AST& ast) {
     generate(statement);
   }
 
+  emit(x86::Op::MOV, x86::Register::RDI, x86::Literal{0});
+  emit(x86::Op::MOV, x86::Register::RAX, x86::Literal{lnx::Syscall::EXIT});
+  emit(x86::Op::SYSCALL);
   _outputFile.write(_output_data);
   _outputFile.write(_output_code);
 }
@@ -39,6 +42,7 @@ void Generator::generate(const AST::Statement& statement) {
       [&](const std::unique_ptr<AST::Print>& print) { generate_print(*print); },
       [&](const std::unique_ptr<AST::If>& ifStatement) { generate_if(*ifStatement); },
       [&](const std::unique_ptr<AST::Type>& type) { generate_type(*type); },
+      [&](const std::unique_ptr<AST::While>& whileStatement) { generate_while(*whileStatement); },
       [&](const std::unique_ptr<AST::Push>&) {}, [&](const std::unique_ptr<AST::Return>&) {},
       [](std::nullptr_t) {});
 }
@@ -183,18 +187,15 @@ void Generator::generate_expression(const AST::Variable& variable) {
   if (variableIter == context().variables.end()) {
     throw std::runtime_error("Unknown Variable " + variable.name);
   }
-
-  emit(x86::Op::MOV, x86::Register::RAX, get_location(variable));
-  push(x86::Register::RAX);
+  push(get_location(variable));
 }
 
 void Generator::generate_expression(const Token& token) {
   if (token.type == Token::Type::NUMBER) {
-    emit(x86::Op::MOV, x86::Register::RAX, x86::Literal{std::stoi(token.value)});
+    push(x86::Literal{std::stoi(token.value)});
   } else {
     throw std::runtime_error("Invalid Terminal");
   }
-  push(x86::Register::RAX);
 }
 
 void Generator::generate_exit(const AST::Exit& exit) {
@@ -268,40 +269,58 @@ void Generator::generate_string(const AST::String& string) {
   emit(x86::Op::MOV, x86::Register::RDX, x86::Literal{static_cast<int>(replacedStr.length())});
 }
 
-auto Generator::generate_if(const AST::If&) -> void { throw std::runtime_error("Ifs Not Implemented"); }
+auto Generator::generate_if(const AST::If& ifNode) -> void {
+  generate_expression(*ifNode.condition);
+  pop(x86::Register::RAX);
+  emit(x86::Op::CMP, x86::Register::RAX, x86::Literal{0});
 
-[[nodiscard]] auto Generator::get_identifier(const AST::Assignment& assignment) -> const std::string& {
-  return assignment.dest->name;
-}
+  // TODO(rolland): this doesn't work for more than one if statement in the same context
+  auto elseLabel = fmt::format("else_{}", _contexts.size());
+  auto endLabel = fmt::format("end_{}", _contexts.size());
 
-auto Generator::get_location(const AST::Variable& variable) -> x86::Address {
-  auto variableIter = context().variables.find(variable.name);
-  if (variableIter == context().variables.end()) {
-    throw std::runtime_error("Unknown Variable " + variable.name);
+  if (!ifNode.elseBody.empty()) {
+    emit(x86::Op::JE, elseLabel);
+  } else {
+    emit(x86::Op::JE, endLabel);
   }
 
-  int offset = 0;
-  if (variable.attribute) {
-    auto& type = get_type(variableIter->second.type);
-    offset = type.get_offset(variable.attribute.value());
+  // enter_context();
+  for (const auto& statement : ifNode.body) {
+    generate(statement);
+  }
+  // leave_context();
+
+  if (!ifNode.elseBody.empty()) {
+    emit(x86::Op::JMP, endLabel);
+    emit(fmt::format("{}:", elseLabel));
+    // enter_context();
+    for (const auto& statement : ifNode.elseBody) {
+      generate(statement);
+    }
+    // leave_context();
   }
 
-  return variableIter->second.location + offset;
+  emit(fmt::format("{}:", endLabel));
 }
 
-auto Generator::get_identifier(const AST::Terminal& terminal) -> const std::string& {
-  return belt::overloaded_visit<const std::string&>(
-      terminal.value, [&](const std::unique_ptr<AST::Variable>& variable) { return variable->name; },
-      [&](const Token& token) { return token.value; },
-      [&](const std::unique_ptr<AST::String>& string) { return string->value; });
-}
+void Generator::generate_while(const AST::While& whileStatement) {
+  auto startLabel = fmt::format("start_{}", _contexts.size());
+  auto endLabel = fmt::format("end_{}", _contexts.size());
 
-auto Generator::get_identifier(const AST::Declaration& declaration) -> const std::string& {
-  return declaration.name;
-}
+  emit(fmt::format("{}:", startLabel));
+  generate_expression(*whileStatement.condition);
+  pop(x86::Register::RAX);
+  emit(x86::Op::CMP, x86::Register::RAX, x86::Literal{0});
+  emit(x86::Op::JE, endLabel);
 
-auto Generator::get_decl_type(const AST::Declaration& declaration) -> const std::string& {
-  return declaration.type;
+  // enter_context();
+  for (const auto& statement : whileStatement.body) {
+    generate(statement);
+  }
+  // leave_context();
+
+  emit(x86::Op::JMP, startLabel);
+  emit(fmt::format("{}:", endLabel));
 }
 
 // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -311,8 +330,8 @@ auto Generator::get_decl_type(const AST::Declaration& declaration) -> const std:
 void Generator::enter_context() {
   auto& current = context();
   _contexts.emplace(Context{.size = 0,
-                            .stack = x86::Address{x86::Address::Mode::DIRECT, x86::Register::RSP, 0},
-                            .variables = {},
+                            .stack = current.stack,
+                            .variables = current.variables,
                             .currVariable = current.currVariable,
                             .typeIDs = current.typeIDs,
                             .types = current.types});
@@ -327,41 +346,41 @@ void Generator::leave_context() {
 
 void Generator::push(x86::Address addr) {
   auto& current = context();
-  emit(x86::Op::PUSH, addr);
-  current.stack.disp -= 8;
-  current.size += 8;
+  emit(x86::Op::PUSH, x86::Size::QWORD, addr);
+  current.stack.disp -= x86::Size::QWORD;
+  current.size += x86::Size::QWORD;
   for (auto& variable : current.variables) {
-    variable.second.location.disp += 8;
+    variable.second.location.disp += x86::Size::QWORD;
   }
 }
 
 void Generator::push(x86::Literal lit) {
   auto& current = context();
-  emit(x86::Op::PUSH, lit);
-  current.stack.disp -= 8;
-  current.size += 8;
+  emit(x86::Op::PUSH, x86::Size::QWORD, lit);
+  current.stack.disp -= x86::Size::QWORD;
+  current.size += x86::Size::QWORD;
   for (auto& variable : current.variables) {
-    variable.second.location.disp += 8;
+    variable.second.location.disp += x86::Size::QWORD;
   }
 }
 
 void Generator::push(x86::Register reg) {
   auto& current = context();
-  emit(x86::Op::PUSH, reg);
-  current.stack.disp -= 8;
-  current.size += 8;
+  emit(x86::Op::PUSH, x86::Size::QWORD, reg);
+  current.stack.disp -= x86::Size::QWORD;
+  current.size += x86::Size::QWORD;
   for (auto& variable : current.variables) {
-    variable.second.location.disp += 8;
+    variable.second.location.disp += x86::Size::QWORD;
   }
 }
 
 void Generator::pop(x86::Register reg) {
   auto& current = context();
-  emit(x86::Op::POP, reg);
-  current.stack.disp += 8;
-  current.size -= 8;
+  emit(x86::Op::POP, x86::Size::QWORD, reg);
+  current.stack.disp += x86::Size::QWORD;
+  current.size -= x86::Size::QWORD;
   for (auto& variable : current.variables) {
-    variable.second.location.disp -= 8;
+    variable.second.location.disp -= x86::Size::QWORD;
   }
 }
 
@@ -407,6 +426,21 @@ void Generator::emit(x86::Op operation, x86::Register dest, const std::string& v
 }
 void Generator::emit(x86::Op operation, x86::Literal value) {
   _output_code.append(fmt::format("{} {}\n", x86::to_string(operation), value.to_string()));
+}
+
+void Generator::emit(x86::Op operation, x86::Size size, x86::Register reg) {
+  _output_code.append(
+      fmt::format("{} {} {}\n", x86::to_string(operation), x86::to_string(size), x86::to_string(reg)));
+}
+
+void Generator::emit(x86::Op operation, x86::Size size, x86::Address addr) {
+  _output_code.append(
+      fmt::format("{} {} {}\n", x86::to_string(operation), x86::to_string(size), addr.to_string()));
+}
+
+void Generator::emit(x86::Op operation, x86::Size size, x86::Literal lit) {
+  _output_code.append(
+      fmt::format("{} {} {}\n", x86::to_string(operation), x86::to_string(size), lit.to_string()));
 }
 
 void Generator::pull_comparison_result(AST::BinaryOp operation) {
@@ -465,6 +499,40 @@ auto Generator::get_type_id(const std::string& type) -> int {
   }
 
   return typeIter->second;
+}
+
+[[nodiscard]] auto Generator::get_identifier(const AST::Assignment& assignment) -> const std::string& {
+  return assignment.dest->name;
+}
+
+auto Generator::get_location(const AST::Variable& variable) -> x86::Address {
+  auto variableIter = context().variables.find(variable.name);
+  if (variableIter == context().variables.end()) {
+    throw std::runtime_error("Unknown Variable " + variable.name);
+  }
+
+  int offset = 0;
+  if (variable.attribute) {
+    auto& type = get_type(variableIter->second.type);
+    offset = type.get_offset(variable.attribute.value());
+  }
+
+  return variableIter->second.location + offset;
+}
+
+auto Generator::get_identifier(const AST::Terminal& terminal) -> const std::string& {
+  return belt::overloaded_visit<const std::string&>(
+      terminal.value, [&](const std::unique_ptr<AST::Variable>& variable) { return variable->name; },
+      [&](const Token& token) { return token.value; },
+      [&](const std::unique_ptr<AST::String>& string) { return string->value; });
+}
+
+auto Generator::get_identifier(const AST::Declaration& declaration) -> const std::string& {
+  return declaration.name;
+}
+
+auto Generator::get_decl_type(const AST::Declaration& declaration) -> const std::string& {
+  return declaration.type;
 }
 
 void Generator::init_context() {

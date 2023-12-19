@@ -190,6 +190,20 @@ struct Literal {
   [[nodiscard]] operator int64_t() const { return value; }
 };
 
+[[nodiscard]] inline auto to_string(Size size) -> std::string {
+  switch (size) {
+    case Size::BYTE:
+      return "byte";
+    case Size::WORD:
+      return "word";
+    case Size::DWORD:
+      return "dword";
+    case Size::QWORD:
+      return "qword";
+  }
+  throw std::runtime_error("Invalid Size");
+}
+
 [[nodiscard]] inline auto to_string(Register reg) -> std::string {
   switch (reg) {
     case Register::RAX:

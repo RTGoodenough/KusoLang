@@ -25,22 +25,21 @@ auto Parser::parse() -> AST {
   AST  ast;
   auto tokens = _lexer.by_token();
   consume(tokens);
+  auto token = consume(tokens);
 
   while (tokens.has_next()) {
     if (_lookahead.type == Token::Type::END_OF_FILE) {
       break;
     }
-    ast.add_statement(parse_statement(tokens));
+    ast.add_statement(parse_statement(token, tokens));
   }
 
   return ast;
 }
 
-auto Parser::parse_statement(Tokens& tokens) -> AST::Statement {
+auto Parser::parse_statement(Token& token, Tokens& tokens) -> AST::Statement {
   std::cout << "parse_statement\n";
-  AST::Statement statement{nullptr};
-  auto           token = consume(tokens);
-
+  AST::Statement                                   statement{nullptr};
   std::optional<std::unique_ptr<AST::Declaration>> decl;
 
   switch (token.type) {
@@ -53,6 +52,9 @@ auto Parser::parse_statement(Tokens& tokens) -> AST::Statement {
         statement.statement = parse_assignment(token, tokens);
         break;
       }
+      break;
+    case Token::Type::WHILE:
+      statement.statement = parse_while(token, tokens);
       break;
     case Token::Type::TYPE:
       statement.statement = parse_type(token, tokens);
@@ -74,6 +76,7 @@ auto Parser::parse_statement(Tokens& tokens) -> AST::Statement {
   }
 
   match({Token::Type::SEMI_COLON}, token, tokens);
+  token = consume(tokens);
   return statement;
 }
 
@@ -87,10 +90,19 @@ auto Parser::parse_if(Token& token, Tokens& tokens) -> std::unique_ptr<AST::If> 
 
   match({Token::Type::CLOSE_PAREN}, token, tokens);
   match({Token::Type::OPEN_BRACE}, token, tokens);
+  token = consume(tokens);
 
   while (token.type != Token::Type::CLOSE_BRACE) {
-    ifStatement->body.push_back(parse_statement(tokens));
+    ifStatement->body.push_back(parse_statement(token, tokens));
+  }
+
+  if (try_match({Token::Type::ELSE}, token, tokens)) {
+    match({Token::Type::OPEN_BRACE}, token, tokens);
     token = consume(tokens);
+
+    while (token.type != Token::Type::CLOSE_BRACE) {
+      ifStatement->elseBody.push_back(parse_statement(token, tokens));
+    }
   }
 
   return ifStatement;
@@ -269,7 +281,7 @@ auto Parser::parse_primary(Token& token, Tokens& tokens) -> std::unique_ptr<AST:
     return primary;
   }
 
-  syntax_error(token, Token(Token::Type::IDENTIFIER));
+  syntax_error(_lookahead, Token(Token::Type::IDENTIFIER));
 }
 
 auto Parser::parse_assignment(Token& dest, Tokens& tokens) -> std::unique_ptr<AST::Assignment> {
@@ -299,9 +311,28 @@ auto Parser::parse_variable(Token& token, Tokens& tokens) -> std::unique_ptr<AST
   return variable;
 }
 
+auto Parser::parse_while(Token& token, Tokens& tokens) -> std::unique_ptr<AST::While> {
+  std::cout << "parse_while\n";
+  auto whileStatement = std::make_unique<AST::While>();
+
+  match({Token::Type::OPEN_PAREN}, token, tokens);
+  whileStatement->condition = parse_expression(token, tokens);
+
+  match({Token::Type::CLOSE_PAREN}, token, tokens);
+  match({Token::Type::OPEN_BRACE}, token, tokens);
+  token = consume(tokens);
+
+  while (token.type != Token::Type::CLOSE_BRACE) {
+    whileStatement->body.push_back(parse_statement(token, tokens));
+  }
+
+  return whileStatement;
+}
+
 auto Parser::parse_exit(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Exit> {
   std::cout << "parse_exit\n";
   auto exit = std::make_unique<AST::Exit>();
+
   exit->value = parse_expression(token, tokens);
 
   return exit;
@@ -372,7 +403,7 @@ auto Parser::try_match(std::initializer_list<Token::Type> types, Token& token, T
 
 auto Parser::consume(Tokens& tokens) -> Token {
   Token temp = _lookahead;
-  _lookahead = tokens.next();
+  if (tokens.has_next()) _lookahead = tokens.next();
   return temp;
 }
 }  // namespace kuso

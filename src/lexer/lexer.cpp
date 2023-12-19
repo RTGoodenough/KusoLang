@@ -10,11 +10,12 @@ namespace kuso {
 // TODO(rolland): line column points to the end of the token
 
 auto Lexer::by_token() -> belt::Generator<Token> {
-  while (!_source.eof()) {
+  while (true) {
+    if (_source.eof()) {
+      co_yield Token(Token::Type::END_OF_FILE, _line, _column);
+    }
     co_yield parse_token();
   }
-
-  co_return Token(Token::Type::END_OF_FILE, _line, _column);
 }
 
 auto Lexer::parse_token() -> Token {
@@ -171,6 +172,29 @@ auto Lexer::skip_comments() -> char {
     }
     ++_line;
     _column = 1;
+  } else if (_source.peek_char() == '*') {
+    _source.next_char();
+    ++_column;
+    while (true) {
+      if (_source.eof()) {
+        throw std::runtime_error("Unterminated comment");
+      }
+      if (_source.peek_char() == '*') {
+        _source.next_char();
+        ++_column;
+        if (_source.peek_char() == '/') {
+          _source.next_char();
+          ++_column;
+          break;
+        }
+      }
+      if (_source.peek_char() == '\n') {
+        ++_line;
+        _column = 1;
+      }
+      _source.next_char();
+      ++_column;
+    }
   }
 
   ++_column;
@@ -270,7 +294,8 @@ auto Lexer::keywords() -> const std::map<std::string, Token::Type>& {
   static const std::map<std::string, Token::Type> KEYWORDS{
       {"if", Token::Type::IF},       {"else", Token::Type::ELSE},     {"for", Token::Type::FOR},
       {"while", Token::Type::WHILE}, {"return", Token::Type::RETURN}, {"exit", Token::Type::EXIT},
-      {"print", Token::Type::PRINT}, {"type", Token::Type::TYPE}};
+      {"print", Token::Type::PRINT}, {"type", Token::Type::TYPE},     {"while", Token::Type::WHILE},
+  };
   return KEYWORDS;
 }
 }  // namespace kuso
