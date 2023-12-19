@@ -26,7 +26,8 @@ class Parser {
 
   Token _lookahead;
 
-  auto match(std::initializer_list<Token::Type>, Token&, Tokens&) -> bool;
+  auto try_match(std::initializer_list<Token::Type>, Token&, Tokens&) -> bool;
+  void match(std::initializer_list<Token::Type>, Token&, Tokens&);
   auto consume(Tokens&) -> Token;
 
   [[noreturn]] static void syntax_error(const Token&, const Token&);
@@ -41,6 +42,10 @@ class Parser {
   [[nodiscard]] auto parse_factor(Token&, Tokens&) -> std::unique_ptr<AST::Factor>;
   [[nodiscard]] auto parse_unary(Token&, Tokens&) -> std::unique_ptr<AST::Unary>;
   [[nodiscard]] auto parse_primary(Token&, Tokens&) -> std::unique_ptr<AST::Primary>;
+  [[nodiscard]] auto parse_variable(Token&, Tokens&) -> std::unique_ptr<AST::Variable>;
+
+  [[nodiscard]] auto parse_type(Token&, Tokens&) -> std::unique_ptr<AST::Type>;
+  [[nodiscard]] auto parse_attribute(Token&, Tokens&) -> AST::Attribute;
 
   [[nodiscard]] auto parse_assignment(Token&, Tokens&) -> std::unique_ptr<AST::Assignment>;
   [[nodiscard]] auto parse_push(Token&, Tokens&) -> std::unique_ptr<AST::Push>;

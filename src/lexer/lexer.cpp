@@ -32,7 +32,7 @@ auto Lexer::parse_token() -> Token {
     chr = _source.next_char();
     ++_column;
   }
-  if (chr == '/') {
+  while (chr == '/') {
     chr = skip_comments();
   }
 
@@ -270,7 +270,7 @@ auto Lexer::keywords() -> const std::map<std::string, Token::Type>& {
   static const std::map<std::string, Token::Type> KEYWORDS{
       {"if", Token::Type::IF},       {"else", Token::Type::ELSE},     {"for", Token::Type::FOR},
       {"while", Token::Type::WHILE}, {"return", Token::Type::RETURN}, {"exit", Token::Type::EXIT},
-      {"print", Token::Type::PRINT}};
+      {"print", Token::Type::PRINT}, {"type", Token::Type::TYPE}};
   return KEYWORDS;
 }
 }  // namespace kuso

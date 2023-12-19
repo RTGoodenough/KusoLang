@@ -38,6 +38,7 @@ void Generator::generate(const AST::Statement& statement) {
       [&](const std::unique_ptr<AST::Exit>& exit) { generate_exit(*exit); },
       [&](const std::unique_ptr<AST::Print>& print) { generate_print(*print); },
       [&](const std::unique_ptr<AST::If>& ifStatement) { generate_if(*ifStatement); },
+      [&](const std::unique_ptr<AST::Type>& type) { generate_type(*type); },
       [&](const std::unique_ptr<AST::Push>&) {}, [&](const std::unique_ptr<AST::Return>&) {},
       [](std::nullptr_t) {});
 }
@@ -51,11 +52,20 @@ void Generator::generate_declaration(const AST::Declaration& declaration) {
     throw std::runtime_error("Multiple Declarations of " + name);
   }
 
+  auto& type = get_type(typeID);
+
   if (declaration.value) {
+    if (type.offsets) throw std::runtime_error("Cannot assign value to type with attributes");
     generate_expression(*declaration.value);
   } else {
-    push(x86::Literal{0});
+    if (type.offsets) {
+      std::for_each(type.offsets.value().begin(), type.offsets.value().end(),
+                    [&](auto&) { push(x86::Literal{0}); });
+    } else {
+      push(x86::Literal{0});
+    }
   }
+
   current.variables[name] =
       Variable{typeID, {x86::Address::Mode::INDIRECT_DISPLACEMENT, x86::Register::RSP, 0}};
 }
@@ -71,7 +81,7 @@ void Generator::generate_assignment(const AST::Assignment& assignment) {
 
   generate_expression(*assignment.value);
   pop(x86::Register::RAX);
-  emit(x86::Op::MOV, variableIter->second.location, x86::Register::RAX);
+  emit(x86::Op::MOV, get_location(*assignment.dest), x86::Register::RAX);
 }
 
 void Generator::generate_expression(const AST::Expression& expression) {
@@ -157,20 +167,30 @@ void Generator::generate_expression(const AST::Primary& primary) {
   belt::overloaded_visit(
       primary.value, [&](const std::unique_ptr<AST::Terminal>& terminal) { generate_expression(*terminal); },
       [&](const std::unique_ptr<AST::Expression>& expression) { generate_expression(*expression); },
-      [&](const std::unique_ptr<AST::String>& string) { generate_string(*string); });
+      [&](const std::unique_ptr<AST::String>& string) { generate_string(*string); },
+      [&](const std::unique_ptr<AST::Variable>& variable) { generate_expression(*variable); });
 }
 
 void Generator::generate_expression(const AST::Terminal& terminal) {
-  if (terminal.token.type == Token::Type::IDENTIFIER) {
-    const auto& name = terminal.token.value;
-    auto        variableIter = context().variables.find(name);
-    if (variableIter == context().variables.end()) {
-      throw std::runtime_error("Unknown Variable " + name);
-    }
+  belt::overloaded_visit(
+      terminal.value, [&](const std::unique_ptr<AST::Variable>& variable) { generate_expression(*variable); },
+      [&](const Token& token) { generate_expression(token); },
+      [&](const std::unique_ptr<AST::String>& string) { generate_string(*string); }, [](std::nullptr_t) {});
+}
 
-    emit(x86::Op::MOV, x86::Register::RAX, variableIter->second.location);
-  } else if (terminal.token.type == Token::Type::NUMBER) {
-    emit(x86::Op::MOV, x86::Register::RAX, x86::Literal{std::stoi(terminal.token.value)});
+void Generator::generate_expression(const AST::Variable& variable) {
+  auto variableIter = context().variables.find(variable.name);
+  if (variableIter == context().variables.end()) {
+    throw std::runtime_error("Unknown Variable " + variable.name);
+  }
+
+  emit(x86::Op::MOV, x86::Register::RAX, get_location(variable));
+  push(x86::Register::RAX);
+}
+
+void Generator::generate_expression(const Token& token) {
+  if (token.type == Token::Type::NUMBER) {
+    emit(x86::Op::MOV, x86::Register::RAX, x86::Literal{std::stoi(token.value)});
   } else {
     throw std::runtime_error("Invalid Terminal");
   }
@@ -198,6 +218,37 @@ void Generator::generate_print(const AST::Print& print) {
   emit(x86::Op::SYSCALL);
 }
 
+void Generator::generate_type(const AST::Type& type) {
+  auto& current = context();
+
+  auto typeIter = current.typeIDs.find(type.name);
+  if (typeIter != current.typeIDs.end()) {
+    throw std::runtime_error("Multiple Declarations of " + type.name);
+  }
+
+  auto typeID = current.currVariable;
+  ++current.currVariable;
+
+  Type_t newType;
+
+  if (!type.attributes.empty()) {
+    newType.offsets = std::map<std::string, int>{};
+    int currOffset = 0;
+
+    for (const auto& attribute : type.attributes) {
+      auto& refType = get_type(get_type_id(attribute.type));
+      newType.offsets.value()[attribute.name] = currOffset;
+      currOffset += refType.size;
+      newType.size += refType.size;
+    }
+  } else {
+    newType.size = x86::Size::QWORD;
+  }
+
+  current.types[typeID] = newType;
+  current.typeIDs[type.name] = typeID;
+}
+
 void Generator::generate_string(const AST::String& string) {
   auto replacedStr = std::regex_replace(string.value, std::regex{"\\\\n"}, "\", 10, \"");
   if (replacedStr.length() >= 2 && replacedStr.substr(replacedStr.length() - 2) == "\"\"") {
@@ -217,34 +268,40 @@ void Generator::generate_string(const AST::String& string) {
   emit(x86::Op::MOV, x86::Register::RDX, x86::Literal{static_cast<int>(replacedStr.length())});
 }
 
-auto Generator::generate_if(const AST::If&) -> void {
-  throw std::runtime_error("Ifs Not Implemented");
-  // generate_expression(*ifStatement.condition);
-  // emit(x86::Op::CMP, x86::Register::RAX, x86::Literal{0});
-  // auto label = fmt::format("if_{}", context().labels.size());
-  // context().labels.push(label);
-  // emit(x86::Op::JE, label);
-  // for (const auto& statement : ifStatement.body) {
-  //   generate(statement);
-  // }
-  // emit(label + ":");
-  // context().labels.pop();
-}
+auto Generator::generate_if(const AST::If&) -> void { throw std::runtime_error("Ifs Not Implemented"); }
 
 [[nodiscard]] auto Generator::get_identifier(const AST::Assignment& assignment) -> const std::string& {
-  return get_identifier(*assignment.dest);
+  return assignment.dest->name;
+}
+
+auto Generator::get_location(const AST::Variable& variable) -> x86::Address {
+  auto variableIter = context().variables.find(variable.name);
+  if (variableIter == context().variables.end()) {
+    throw std::runtime_error("Unknown Variable " + variable.name);
+  }
+
+  int offset = 0;
+  if (variable.attribute) {
+    auto& type = get_type(variableIter->second.type);
+    offset = type.get_offset(variable.attribute.value());
+  }
+
+  return variableIter->second.location + offset;
 }
 
 auto Generator::get_identifier(const AST::Terminal& terminal) -> const std::string& {
-  return terminal.token.value;
+  return belt::overloaded_visit<const std::string&>(
+      terminal.value, [&](const std::unique_ptr<AST::Variable>& variable) { return variable->name; },
+      [&](const Token& token) { return token.value; },
+      [&](const std::unique_ptr<AST::String>& string) { return string->value; });
 }
 
 auto Generator::get_identifier(const AST::Declaration& declaration) -> const std::string& {
-  return declaration.name->token.value;
+  return declaration.name;
 }
 
 auto Generator::get_decl_type(const AST::Declaration& declaration) -> const std::string& {
-  return declaration.type->token.value;
+  return declaration.type;
 }
 
 // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -256,6 +313,7 @@ void Generator::enter_context() {
   _contexts.emplace(Context{.size = 0,
                             .stack = x86::Address{x86::Address::Mode::DIRECT, x86::Register::RSP, 0},
                             .variables = {},
+                            .currVariable = current.currVariable,
                             .typeIDs = current.typeIDs,
                             .types = current.types});
 }
@@ -391,7 +449,7 @@ Generator::Generator(const std::filesystem::path& outputpath)
   init_data();
 }
 
-auto Generator::get_type(int typeID) -> Type_t {
+auto Generator::get_type(int typeID) -> Type_t& {
   auto typeIter = context().types.find(typeID);
   if (typeIter == context().types.end()) {
     throw std::runtime_error("Unknown Type " + std::to_string(typeID));
@@ -410,12 +468,13 @@ auto Generator::get_type_id(const std::string& type) -> int {
 }
 
 void Generator::init_context() {
-  _contexts.emplace(
-      Context{.size = 0,
-              .stack = x86::Address{x86::Address::Mode::DIRECT, x86::Register::RSP, 0},
-              .variables = {},
-              .typeIDs = {{"int", 0}, {"byte", 1}, {"str", 2}},
-              .types = {{0, Type_t{x86::Size::QWORD}}, {1, Type_t{1}}, {2, Type_t{x86::Size::QWORD}}}});
+  _contexts.emplace(Context{
+      .size = 0,
+      .stack = x86::Address{x86::Address::Mode::DIRECT, x86::Register::RSP, 0},
+      .variables = {},
+      .currVariable = 2,
+      .typeIDs = {{"int", 0}, {"str", 1}},
+      .types = {{0, Type_t{x86::Size::QWORD, std::nullopt}}, {1, Type_t{x86::Size::QWORD, std::nullopt}}}});
 }
 
 void Generator::init_data() { _output_data = "section   .data\n"; }

@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -31,7 +32,6 @@ class AST {
     NOT,
   };
 
-  struct Terminal;
   struct Declaration;
   struct Return;
   struct Push;
@@ -45,6 +45,11 @@ class AST {
   struct Factor;
   struct Unary;
   struct Primary;
+  struct Terminal;
+  struct Variable;
+
+  struct Type;
+  struct Attribute;
 
   struct Statement;
   struct Exit;
@@ -68,10 +73,6 @@ class AST {
   [[nodiscard]] static auto op_to_string(BinaryOp) -> std::string;
 };
 
-struct AST::Terminal {
-  Token token;
-};
-
 struct AST::String {
   std::string value;
 };
@@ -83,8 +84,8 @@ struct AST::Exit {
 };
 
 struct AST::Declaration {
-  std::unique_ptr<Terminal>   name;
-  std::unique_ptr<Terminal>   type;
+  std::string                 name;
+  std::string                 type;
   std::unique_ptr<Expression> value;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
@@ -100,11 +101,11 @@ struct AST::Push {
   std::unique_ptr<Expression> value;
   std::unique_ptr<Expression> dest;
 
-  [[nodiscard]] auto to_string(int) const -> std::string;
+  [[nodiscard]] static auto to_string(int) -> std::string;
 };
 
 struct AST::Assignment {
-  std::unique_ptr<Terminal>   dest;
+  std::unique_ptr<Variable>   dest;
   std::unique_ptr<Expression> value;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
@@ -154,6 +155,12 @@ struct AST::Factor {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+struct AST::Terminal {
+  std::variant<std::unique_ptr<Variable>, Token, std::unique_ptr<String>> value;
+
+  [[nodiscard]] auto to_string(int) const -> std::string;
+};
+
 struct AST::Unary {
   std::variant<std::unique_ptr<Unary>, std::unique_ptr<Primary>> value;
   BinaryOp                                                       op;
@@ -162,7 +169,16 @@ struct AST::Unary {
 };
 
 struct AST::Primary {
-  std::variant<std::unique_ptr<Terminal>, std::unique_ptr<Expression>, std::unique_ptr<String>> value;
+  std::variant<std::unique_ptr<Variable>, std::unique_ptr<Terminal>, std::unique_ptr<Expression>,
+               std::unique_ptr<String>>
+      value;
+
+  [[nodiscard]] auto to_string(int) const -> std::string;
+};
+
+struct AST::Variable {
+  std::string                name;
+  std::optional<std::string> attribute;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
@@ -174,9 +190,22 @@ struct AST::If {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+struct AST::Attribute {
+  std::string name;
+  std::string type;
+};
+
+struct AST::Type {
+  std::string            name;
+  std::vector<Attribute> attributes;
+
+  [[nodiscard]] auto to_string(int) const -> std::string;
+};
+
 struct AST::Statement {
-  std::variant<std::unique_ptr<If>, std::unique_ptr<Exit>, std::unique_ptr<Assignment>, std::unique_ptr<Push>,
-               std::unique_ptr<Declaration>, std::unique_ptr<Return>, std::unique_ptr<Print>, std::nullptr_t>
+  std::variant<std::unique_ptr<Type>, std::unique_ptr<If>, std::unique_ptr<Exit>, std::unique_ptr<Assignment>,
+               std::unique_ptr<Push>, std::unique_ptr<Declaration>, std::unique_ptr<Return>,
+               std::unique_ptr<Print>, std::nullptr_t>
       statement;
 
   explicit Statement(std::nullptr_t) : statement(nullptr) {}
@@ -185,5 +214,6 @@ struct AST::Statement {
   explicit Statement(std::unique_ptr<Return> return_) : statement(std::move(return_)) {}
   explicit Statement(std::unique_ptr<Assignment> assignment) : statement(std::move(assignment)) {}
   explicit Statement(std::unique_ptr<Declaration> declaration) : statement(std::move(declaration)) {}
+  explicit Statement(std::unique_ptr<Type> type) : statement(std::move(type)) {}
 };
 }  // namespace kuso

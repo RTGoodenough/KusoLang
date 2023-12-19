@@ -12,6 +12,7 @@ struct Context {
   int                             size;
   x86::Address                    stack;
   std::map<std::string, Variable> variables;
+  int                             currVariable;
   std::map<std::string, int>      typeIDs;
   std::map<int, Type_t>           types;
 };

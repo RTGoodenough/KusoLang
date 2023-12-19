@@ -16,6 +16,7 @@ auto AST::to_string() const -> std::string {
           // TODO(rolland): Implement push to string
           result += "push\n";
         },
+        [&result](const std::unique_ptr<Type>& type) { result += type->to_string(0); },
         [&result](const std::unique_ptr<If>& if_) { result += if_->to_string(0); },
         [&result](const std::unique_ptr<Print>& print) { result += print->value->to_string(0); },
         [&result](const std::unique_ptr<Return>& return_) { result += return_->value->to_string(0); },
@@ -51,31 +52,31 @@ auto AST::end() const -> const_iterator { return _statements.end(); }
 // ----------------------------------------- NODE TYPES ------------------------------------------------------
 
 auto AST::Assignment::to_string(int indent) const -> std::string {
-  return fmt::format("\n{: >{}}", "", indent) + dest->token.value + " = " + value->to_string(indent + 1) +
-         '\n';
+  return fmt::format("\n{: >{}}", "", indent) + dest->name + " = " +
+         (value ? value->to_string(indent + 1) : "") + '\n';
 }
 
 auto AST::Expression::to_string(int indent) const -> std::string {
-  return fmt::format("\n{: >{}}Expression:", "", indent) + value->to_string(indent + 1);
+  return fmt::format("\n{: >{}}Expression:", "", indent) + (value ? value->to_string(indent + 1) : "");
 }
 
 auto AST::Declaration::to_string(int indent) const -> std::string {
-  return fmt::format("\n{: >{}}Declaration:", "", indent) + name->token.value + " as " + type->token.value +
-         value->to_string(indent + 1) + '\n';
+  return fmt::format("\n{: >{}}Declaration:", "", indent) + name + " as " + type +
+         (value ? value->to_string(indent + 1) : "") + '\n';
 }
 
-auto AST::Push::to_string(int) const -> std::string { return "push "; }
+auto AST::Push::to_string(int) -> std::string { return "push "; }
 
 auto AST::Return::to_string(int indent) const -> std::string {
-  return fmt::format("\n{: >{}}Return:", "", indent) + value->to_string(indent + 1);
+  return fmt::format("\n{: >{}}Return:", "", indent) + (value ? value->to_string(indent + 1) : "");
 }
 
 auto AST::Exit::to_string(int indent) const -> std::string {
-  return fmt::format("\n{: >{}}Exit:", "", indent) + value->to_string(indent + 1);
+  return fmt::format("\n{: >{}}Exit:", "", indent) + (value ? value->to_string(indent + 1) : "");
 }
 
 auto AST::Print::to_string(int indent) const -> std::string {
-  return fmt::format("\n{: >{}}Print:", "", indent) + value->to_string(indent + 1);
+  return fmt::format("\n{: >{}}Print:", "", indent) + (value ? value->to_string(indent + 1) : "");
 }
 
 auto AST::If::to_string(int indent) const -> std::string {
@@ -109,8 +110,27 @@ auto AST::Unary::to_string(int indent) const -> std::string {
         return fmt::format("\n{: >{}}Unary:", "", indent) + op_to_string(op) + unary->to_string(indent + 1);
       },
       [&](const std::unique_ptr<Primary>& value) {
-        return fmt::format("\n{: >{}}Unary:", "", indent) + value->to_string(indent + 1);
+        return fmt::format("\n{: >{}}Unary:", "", indent) + (value ? value->to_string(indent + 1) : "");
       });
+}
+
+auto AST::Variable::to_string(int indent) const -> std::string {
+  return fmt::format("\n{: >{}}Variable:", "", indent) + name + (attribute ? "." + attribute.value() : "");
+}
+
+auto AST::Terminal::to_string(int indent) const -> std::string {
+  return belt::overloaded_visit<std::string>(
+      value, [&](const Token& token) { return fmt::format("\n{: >{}}Terminal:", "", indent) + token.value; },
+      [&](const std::unique_ptr<String>& str) {
+        return fmt::format("\n{: >{}}Terminal:", "", indent) + str->value;
+      },
+      [&](const std::unique_ptr<Variable>& variable) {
+        return fmt::format("\n{: >{}}Terminal:", "", indent) + variable->to_string(indent + 1);
+      });
+}
+
+auto AST::Type::to_string(int indent) const -> std::string {
+  return fmt::format("\n{: >{}}Type:", "", indent) + name;
 }
 
 auto AST::Primary::to_string(int indent) const -> std::string {
@@ -120,10 +140,14 @@ auto AST::Primary::to_string(int indent) const -> std::string {
         return fmt::format("\n{: >{}}Primary:", "", indent) + expression->to_string(indent + 1);
       },
       [&](const std::unique_ptr<Terminal>& terminal) {
-        return fmt::format("\n{: >{}}Primary:", "", indent) + terminal->token.value;
+        return fmt::format("\n{: >{}}Primary:", "", indent) + terminal->to_string(indent + 1);
       },
-      [&](const std::unique_ptr<String>& declaration) {
-        return fmt::format("\n{: >{}}Primary:", "", indent) + declaration->value;
+
+      [&](const std::unique_ptr<Variable>& variable) {
+        return fmt::format("\n{: >{}}Primary:", "", indent) + variable->to_string(indent + 1);
+      },
+      [&](const std::unique_ptr<String>& str) {
+        return fmt::format("\n{: >{}}Primary:", "", indent) + str->value;
       });
 }
 }  // namespace kuso

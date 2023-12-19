@@ -4,15 +4,6 @@
 #include <string>
 
 namespace kuso::x86 {
-
-struct Literal {
-  int64_t value;
-
-  [[nodiscard]] auto to_string() const -> std::string { return std::to_string(value); }
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  [[nodiscard]] operator int64_t() const { return value; }
-};
-
 enum Size { BYTE = 1, WORD = 2, DWORD = 4, QWORD = 8 };
 enum class Register {
   RAX,
@@ -72,17 +63,18 @@ enum class Register {
   DIL,
   SPL,
   BPL,
-  R8L,
-  R9L,
-  R10L,
-  R11L,
-  R12L,
-  R13L,
-  R14L,
-  R15L
+  R8B,
+  R9B,
+  R10B,
+  R11B,
+  R12B,
+  R13B,
+  R14B,
+  R15B
 };
 enum class Op {
   MOV,
+  MOVL,
   ADD,
   SUB,
   MUL,
@@ -187,6 +179,15 @@ enum class Op {
   SYSEXITPW,
   SYSCALLPW,
   SYSENTERPW
+};
+
+struct Literal {
+  int64_t   value{};
+  x86::Size size{x86::Size::DWORD};
+
+  [[nodiscard]] auto to_string() const -> std::string { return std::to_string(value); }
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  [[nodiscard]] operator int64_t() const { return value; }
 };
 
 [[nodiscard]] inline auto to_string(Register reg) -> std::string {
@@ -305,22 +306,22 @@ enum class Op {
       return "spl";
     case Register::BPL:
       return "bpl";
-    case Register::R8L:
-      return "r8l";
-    case Register::R9L:
-      return "r9l";
-    case Register::R10L:
-      return "r10l";
-    case Register::R11L:
-      return "r11l";
-    case Register::R12L:
-      return "r12l";
-    case Register::R13L:
-      return "r13l";
-    case Register::R14L:
-      return "r14l";
-    case Register::R15L:
-      return "r15l";
+    case Register::R8B:
+      return "r8b";
+    case Register::R9B:
+      return "r9b";
+    case Register::R10B:
+      return "r10b";
+    case Register::R11B:
+      return "r11b";
+    case Register::R12B:
+      return "r12b";
+    case Register::R13B:
+      return "r13b";
+    case Register::R14B:
+      return "r14b";
+    case Register::R15B:
+      return "r15b";
     default:
       break;
   }
@@ -331,6 +332,8 @@ enum class Op {
   switch (operation) {
     case Op::MOV:
       return "mov";
+    case Op::MOVL:
+      return "movl";
     case Op::ADD:
       return "add";
     case Op::SUB:

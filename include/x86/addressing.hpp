@@ -25,6 +25,12 @@ struct Address {
 
     throw std::runtime_error("Invalid Address");
   }
+
+  [[nodiscard]] auto operator+(int off) const -> Address {
+    auto addr = *this;
+    addr.disp += off;
+    return addr;
+  }
 };
 
 }  // namespace kuso::x86

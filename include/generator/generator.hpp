@@ -74,22 +74,25 @@ class Generator {
   void generate_print(const AST::Print&);
   void generate_if(const AST::If&);
 
+  void generate_type(const AST::Type&);
+
   void generate_expression(const AST::Expression&);
   void generate_expression(const AST::Terminal&);
-
   void generate_expression(const AST::Equality&);
   void generate_expression(const AST::Comparison&);
   void generate_expression(const AST::Term&);
   void generate_expression(const AST::Factor&);
   void generate_expression(const AST::Unary&);
   void generate_expression(const AST::Primary&);
+  void generate_expression(const AST::Variable&);
+  void generate_expression(const Token&);
 
   void generate_string(const AST::String&);
 
-  [[nodiscard]] auto next_address() -> x86::Address;
-
   [[nodiscard]] auto get_type_id(const std::string&) -> int;
-  [[nodiscard]] auto get_type(int) -> Type_t;
+  [[nodiscard]] auto get_type(int) -> Type_t&;
+
+  [[nodiscard]] auto get_location(const AST::Variable&) -> x86::Address;
 
   [[nodiscard]] static auto get_identifier(const AST::Terminal&) -> const std::string&;
   [[nodiscard]] static auto get_identifier(const AST::Declaration&) -> const std::string&;
