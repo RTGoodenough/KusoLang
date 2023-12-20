@@ -7,8 +7,11 @@
 
 namespace kuso {
 
-// TODO(rolland): line column points to the end of the token
-
+/**
+ * @brief Creates a token generator from a source file
+ * 
+ * @return belt::Generator<Token> 
+ */
 auto Lexer::by_token() -> belt::Generator<Token> {
   while (true) {
     if (_source.eof()) {
@@ -18,6 +21,11 @@ auto Lexer::by_token() -> belt::Generator<Token> {
   }
 }
 
+/**
+ * @brief Parses a token from the source file
+ * 
+ * @return Token 
+ */
 auto Lexer::parse_token() -> Token {
   if (_source.eof()) {
     return Token(Token::Type::END_OF_FILE, _line, _column);
@@ -166,6 +174,11 @@ auto Lexer::parse_token() -> Token {
   }
 }
 
+/**
+ * @brief Skips comments
+ * 
+ * @return char last character after the comment
+ */
 auto Lexer::skip_comments() -> char {
   if (_source.peek_char() == '/') {
     while (_source.next_char() != '\n') {
@@ -201,6 +214,12 @@ auto Lexer::skip_comments() -> char {
   return _source.next_char();
 }
 
+/**
+ * @brief Parses an identifier, returning it as a keyword if it is one
+ * 
+ * @param chr first character of the identifier
+ * @return Token resulting token
+ */
 auto Lexer::parse_identifier(char chr) -> Token {
   std::string value;
   value += chr;
@@ -216,6 +235,12 @@ auto Lexer::parse_identifier(char chr) -> Token {
   return Token(type, _line, _column);
 }
 
+/**
+ * @brief Parses a number
+ * 
+ * @param chr first character of the number
+ * @return Token resulting token
+ */
 auto Lexer::parse_number(char chr) -> Token {
   std::string value;
   value += chr;
@@ -227,6 +252,11 @@ auto Lexer::parse_number(char chr) -> Token {
   return Token(Token::Type::NUMBER, _line, _column, value);
 }
 
+/**
+ * @brief Parses a string
+ * 
+ * @return Token resulting token
+ */
 auto Lexer::parse_string() -> Token {
   std::string value = "\"";
   while (_source.peek_char() != '"' && !_source.eof()) {
@@ -241,6 +271,11 @@ auto Lexer::parse_string() -> Token {
   return Token(Token::Type::STRING, _line, _column, value);
 }
 
+/**
+ * @brief Replaces an assignment operator with a boolean equal operator, if it is one
+ * 
+ * @return Token resulting token
+ */
 auto Lexer::replace_bool_equal() -> Token {
   if (_source.peek_char() == '=') {
     _source.next_char();
@@ -251,6 +286,12 @@ auto Lexer::replace_bool_equal() -> Token {
   return Token(Token::Type::EQUAL, _line, _column);
 }
 
+/**
+ * @brief Replaces a greater than or less than operator with a greater than or less than equal operator, if it is one
+ * 
+ * @param greater whether the operator is a greater than or less than operator
+ * @return Token resulting token
+ */
 auto Lexer::replace_gt_lt(bool greater) -> Token {
   if (_source.peek_char() == '=') {
     _source.next_char();
@@ -267,6 +308,11 @@ auto Lexer::replace_gt_lt(bool greater) -> Token {
   return Token(Token::Type::LESS_THAN, _line, _column);
 }
 
+/**
+ * @brief Replaces a not equal operator with a not equal operator, if it is one
+ * 
+ * @return Token resulting token
+ */
 auto Lexer::replace_not_equal() -> Token {
   if (_source.peek_char() == '=') {
     _source.next_char();
@@ -277,10 +323,23 @@ auto Lexer::replace_not_equal() -> Token {
   return Token(Token::Type::EXCLAMATION, _line, _column);
 }
 
+/**
+ * @brief Checks if a string is a keyword
+ * 
+ * @param value string to check
+ * @return true if the string is a keyword
+ * @return false if the string is not a keyword
+ */
 auto Lexer::is_keyword(const std::string& value) -> bool {
   return keywords().find(value) != keywords().end();
 }
 
+/**
+ * @brief Replaces a keyword with its corresponding token type
+ * 
+ * @param value keyword to replace
+ * @return Token::Type resulting token type
+ */
 auto Lexer::replace_keyword_type(const std::string& value) -> Token::Type {
   auto iter = keywords().find(value);
   if (iter != keywords().end()) {
@@ -290,6 +349,11 @@ auto Lexer::replace_keyword_type(const std::string& value) -> Token::Type {
   return Token::Type::IDENTIFIER;
 }
 
+/**
+ * @brief Gets the keyword map
+ * 
+ * @return const std::map<std::string, Token::Type>& keyword map
+ */
 auto Lexer::keywords() -> const std::map<std::string, Token::Type>& {
   static const std::map<std::string, Token::Type> KEYWORDS{
       {"if", Token::Type::IF},       {"else", Token::Type::ELSE},     {"for", Token::Type::FOR},

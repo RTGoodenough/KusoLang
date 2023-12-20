@@ -6,6 +6,11 @@
 #include <belt/overload.hpp>
 
 namespace kuso {
+/**
+ * @brief Converts the AST to a string
+ * 
+ * @return std::string
+ */
 auto AST::to_string() const -> std::string {
   std::string result;
   for (const auto& statement : _statements) {
@@ -28,8 +33,18 @@ auto AST::to_string() const -> std::string {
   return result;
 }
 
+/**
+ * @brief Adds a statement to the AST
+ * 
+ * @param statement 
+ */
 void AST::add_statement(Statement&& statement) { _statements.emplace_back(std::move(statement)); }
 
+/**
+ * @brief Converts a binary operator to a string
+ * 
+ * @param type binary operator
+ */
 auto AST::op_to_string(BinaryOp type) -> std::string {
   static const std::unordered_map<BinaryOp, std::string> OPERATORS{
       {BinaryOp::ADD, "+"}, {BinaryOp::SUB, "-"}, {BinaryOp::MUL, "*"},  {BinaryOp::DIV, "/"},
@@ -52,34 +67,82 @@ auto AST::end() const -> const_iterator { return _statements.end(); }
 
 // ----------------------------------------- NODE TYPES ------------------------------------------------------
 
+/**
+ * @brief returns the string representation of the assignment
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Assignment::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}", "", indent) + dest->name + " = " +
          (value ? value->to_string(indent + 1) : "") + '\n';
 }
 
+/**
+ * @brief returns the string representation of the expression
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Expression::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Expression:", "", indent) + (value ? value->to_string(indent + 1) : "");
 }
 
+/**
+ * @brief returns the string representation of the declaration
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Declaration::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Declaration:", "", indent) + name + " as " + type +
          (value ? value->to_string(indent + 1) : "") + '\n';
 }
 
+/**
+ * @brief returns the string representation of the push
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Push::to_string(int) const -> std::string { return "push "; }
 
+/**
+ * @brief returns the string representation of the return
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Return::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Return:", "", indent) + (value ? value->to_string(indent + 1) : "");
 }
 
+/**
+ * @brief returns the string representation of the exit
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Exit::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Exit:", "", indent) + (value ? value->to_string(indent + 1) : "");
 }
 
+/**
+ * @brief returns the string representation of the print
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Print::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Print:", "", indent) + (value ? value->to_string(indent + 1) : "");
 }
 
+/**
+ * @brief returns the string representation of the if
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::If::to_string(int indent) const -> std::string {
   std::string ret = fmt::format("\n{: >{}}If:", "", indent) + condition->to_string(indent + 1) + ":\n";
   for (const auto& statement : body) {
@@ -94,6 +157,12 @@ auto AST::If::to_string(int indent) const -> std::string {
   return ret;
 }
 
+/**
+ * @brief returns the string representation of the statement
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Statement::to_string(int indent) const -> std::string {
   return belt::overloaded_visit<std::string>(
       statement, [&](const std::unique_ptr<Assignment>& assignment) { return assignment->to_string(indent); },
@@ -108,6 +177,12 @@ auto AST::Statement::to_string(int indent) const -> std::string {
       [&](std::nullptr_t) { return std::string("null\n"); });
 }
 
+/**
+ * @brief returns the string representation of the while
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::While::to_string(int indent) const -> std::string {
   std::string ret = fmt::format("\n{: >{}}While:", "", indent) + condition->to_string(indent + 1) + ":\n";
   for (const auto& statement : body) {
@@ -116,26 +191,56 @@ auto AST::While::to_string(int indent) const -> std::string {
   return ret;
 }
 
+/**
+ * @brief returns the string representation of the comparison
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Comparison::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Comparison", "", indent) + left->to_string(indent + 1) + " " +
          (right ? op_to_string(op) + " " + right->to_string(indent + 1) : "");
 }
 
+/**
+ * @brief returns the string representation of the equality
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Equality::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Equality:", "", indent) + left->to_string(indent + 1) + " " +
          (right ? (equal ? "== " : "!= ") + right->to_string(indent + 1) : "");
 }
 
+/**
+ * @brief returns the string representation of the term
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Term::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Term:", "", indent) + left->to_string(indent + 1) + " " +
          (right ? op_to_string(op) + " " + right->to_string(indent + 1) : "");
 }
 
+/**
+ * @brief returns the string representation of the factor
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Factor::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Factor:", "", indent) + left->to_string(indent + 1) + " " +
          (right ? op_to_string(op) + " " + right->to_string(indent + 1) : "");
 }
 
+/**
+ * @brief returns the string representation of the unary
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Unary::to_string(int indent) const -> std::string {
   return belt::overloaded_visit<std::string>(
       value,
@@ -147,10 +252,22 @@ auto AST::Unary::to_string(int indent) const -> std::string {
       });
 }
 
+/**
+ * @brief returns the string representation of the variable
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Variable::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Variable:", "", indent) + name + (attribute ? "." + attribute.value() : "");
 }
 
+/**
+ * @brief returns the string representation of the terminal
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Terminal::to_string(int indent) const -> std::string {
   return belt::overloaded_visit<std::string>(
       value, [&](const Token& token) { return fmt::format("\n{: >{}}Terminal:", "", indent) + token.value; },
@@ -162,10 +279,22 @@ auto AST::Terminal::to_string(int indent) const -> std::string {
       });
 }
 
+/**
+ * @brief returns the string representation of the type
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Type::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Type:", "", indent) + name;
 }
 
+/**
+ * @brief returns the string representation of the primary
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
 auto AST::Primary::to_string(int indent) const -> std::string {
   return belt::overloaded_visit<std::string>(
       value,

@@ -2,9 +2,9 @@
 
 #include <fmt/format.h>
 
-#include "x86.hpp"
+#include "x64.hpp"
 
-namespace kuso::x86 {
+namespace kuso::x64 {
 
 struct Address {
   enum class Mode { DIRECT, INDIRECT, INDIRECT_DISPLACEMENT };
@@ -16,11 +16,11 @@ struct Address {
   [[nodiscard]] auto to_string() const -> std::string {
     switch (mode) {
       case Mode::DIRECT:
-        return reg == Register::NONE ? fmt::format("{:x}", disp) : x86::to_string(reg);
+        return reg == Register::NONE ? fmt::format("{:x}", disp) : x64::to_string(reg);
       case Mode::INDIRECT:
-        return "[" + x86::to_string(reg) + "]";
+        return "[" + x64::to_string(reg) + "]";
       case Mode::INDIRECT_DISPLACEMENT:
-        return std::to_string(disp) + "[" + x86::to_string(reg) + "]";
+        return std::to_string(disp) + "[" + x64::to_string(reg) + "]";
     }
 
     throw std::runtime_error("Invalid Address");
@@ -33,4 +33,4 @@ struct Address {
   }
 };
 
-}  // namespace kuso::x86
+}  // namespace kuso::x64

@@ -11,10 +11,14 @@
 #include "context.hpp"
 #include "variables.hpp"
 
-#include "x86/addressing.hpp"
-#include "x86/x86.hpp"
+#include "x64/addressing.hpp"
+#include "x64/x64.hpp"
 
 namespace kuso {
+/**
+ * @brief Code generator class
+ * 
+ */
 class Generator {
   NON_DEFAULT_CONSTRUCTIBLE(Generator)
   DEFAULT_DESTRUCTIBLE(Generator)
@@ -46,26 +50,26 @@ class Generator {
 
   void add_data(const std::string&, const std::string&);
 
-  void push(x86::Register);
-  void push(x86::Address);
-  void push(x86::Literal);
-  void pop(x86::Register);
-  void emit(x86::Op);
+  void push(x64::Register);
+  void push(x64::Address);
+  void push(x64::Literal);
+  void pop(x64::Register);
+  void emit(x64::Op);
   void emit(const std::string&);
-  void emit(x86::Op, const std::string&);
-  void emit(x86::Op, x86::Register);
-  void emit(x86::Op, x86::Address);
-  void emit(x86::Op, x86::Size, x86::Register);
-  void emit(x86::Op, x86::Size, x86::Address);
-  void emit(x86::Op, x86::Size, x86::Literal);
-  void emit(x86::Op, x86::Address, x86::Address);
-  void emit(x86::Op, x86::Register, x86::Address);
-  void emit(x86::Op, x86::Register, x86::Register);
-  void emit(x86::Op, x86::Address, x86::Register);
-  void emit(x86::Op, x86::Register, const std::string&);
-  void emit(x86::Op, x86::Literal);
-  void emit(x86::Op, x86::Address, x86::Literal);
-  void emit(x86::Op, x86::Register, x86::Literal);
+  void emit(x64::Op, const std::string&);
+  void emit(x64::Op, x64::Register);
+  void emit(x64::Op, x64::Address);
+  void emit(x64::Op, x64::Size, x64::Register);
+  void emit(x64::Op, x64::Size, x64::Address);
+  void emit(x64::Op, x64::Size, x64::Literal);
+  void emit(x64::Op, x64::Address, x64::Address);
+  void emit(x64::Op, x64::Register, x64::Address);
+  void emit(x64::Op, x64::Register, x64::Register);
+  void emit(x64::Op, x64::Address, x64::Register);
+  void emit(x64::Op, x64::Register, const std::string&);
+  void emit(x64::Op, x64::Literal);
+  void emit(x64::Op, x64::Address, x64::Literal);
+  void emit(x64::Op, x64::Register, x64::Literal);
 
   void pull_comparison_result(AST::BinaryOp);
 
@@ -98,7 +102,7 @@ class Generator {
   [[nodiscard]] auto get_type_id(const std::string&) -> int;
   [[nodiscard]] auto get_type(int) -> Type_t&;
 
-  [[nodiscard]] auto get_location(const AST::Variable&) -> x86::Address;
+  [[nodiscard]] auto get_location(const AST::Variable&) -> x64::Address;
 
   [[nodiscard]] static auto get_identifier(const AST::Terminal&) -> const std::string&;
   [[nodiscard]] static auto get_identifier(const AST::Declaration&) -> const std::string&;

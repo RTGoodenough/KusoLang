@@ -12,6 +12,12 @@
 
 namespace kuso {
 
+/**
+ * @brief Prints a syntax error and exits the program
+ * 
+ * @param token token found
+ * @param expected expected token
+ */
 void Parser::syntax_error(const Token& token, const Token& expected) {
   std::cerr << "Syntax Error: Line " << std::to_string(token.line) << " Column "
             << std::to_string(token.column) << "\nExpected: " << to_string(expected)
@@ -20,6 +26,11 @@ void Parser::syntax_error(const Token& token, const Token& expected) {
   std::exit(1);
 }
 
+/**
+ * @brief Constructs an AST from a list of tokens
+ * 
+ * @return AST 
+ */
 auto Parser::parse() -> AST {
   std::cout << "parse\n";
   AST  ast;
@@ -37,6 +48,13 @@ auto Parser::parse() -> AST {
   return ast;
 }
 
+/**
+ * @brief Parses a statement
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return AST::Statement 
+ */
 auto Parser::parse_statement(Token& token, Tokens& tokens) -> AST::Statement {
   std::cout << "parse_statement\n";
   AST::Statement                                   statement{nullptr};
@@ -80,6 +98,13 @@ auto Parser::parse_statement(Token& token, Tokens& tokens) -> AST::Statement {
   return statement;
 }
 
+/**
+ * @brief Parses an if statement
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::If> 
+ */
 auto Parser::parse_if(Token& token, Tokens& tokens) -> std::unique_ptr<AST::If> {
   std::cout << "parse_if\n";
   // TODO(rolland): add else to if statements
@@ -108,6 +133,13 @@ auto Parser::parse_if(Token& token, Tokens& tokens) -> std::unique_ptr<AST::If> 
   return ifStatement;
 }
 
+/**
+ * @brief Parses a type
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Type> 
+ */
 auto Parser::parse_type(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Type> {
   std::cout << "parse_type\n";
   auto type = std::make_unique<AST::Type>();
@@ -125,6 +157,13 @@ auto Parser::parse_type(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Ty
   return type;
 }
 
+/**
+ * @brief Parses an attribute
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return AST::Attribute 
+ */
 auto Parser::parse_attribute(Token& token, Tokens& tokens) -> AST::Attribute {
   std::cout << "parse_attribute\n";
   auto attribute = AST::Attribute{};
@@ -139,11 +178,25 @@ auto Parser::parse_attribute(Token& token, Tokens& tokens) -> AST::Attribute {
   return attribute;
 }
 
+/**
+ * @brief Parses an expression
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Expression> 
+ */
 auto Parser::parse_expression(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Expression> {
   std::cout << "parse_expression\n";
   return std::make_unique<AST::Expression>(parse_equality(token, tokens));
 }
 
+/**
+ * @brief Parses an equality
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Equality> 
+ */
 auto Parser::parse_equality(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Equality> {
   std::cout << "parse_equality\n";
   auto equality = std::make_unique<AST::Equality>();
@@ -157,6 +210,13 @@ auto Parser::parse_equality(Token& token, Tokens& tokens) -> std::unique_ptr<AST
   return equality;
 }
 
+/**
+ * @brief Parses a comparison
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Comparison> 
+ */
 auto Parser::parse_comparison(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Comparison> {
   std::cout << "parse_comparison\n";
   auto comparison = std::make_unique<AST::Comparison>();
@@ -187,6 +247,13 @@ auto Parser::parse_comparison(Token& token, Tokens& tokens) -> std::unique_ptr<A
   return comparison;
 }
 
+/**
+ * @brief Parses a term
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Term> 
+ */
 auto Parser::parse_term(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Term> {
   std::cout << "parse_term\n";
   auto term = std::make_unique<AST::Term>();
@@ -209,6 +276,13 @@ auto Parser::parse_term(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Te
   return term;
 }
 
+/**
+ * @brief Parses a factor
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Factor> 
+ */
 auto Parser::parse_factor(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Factor> {
   std::cout << "parse_factor\n";
   auto factor = std::make_unique<AST::Factor>();
@@ -234,6 +308,13 @@ auto Parser::parse_factor(Token& token, Tokens& tokens) -> std::unique_ptr<AST::
   return factor;
 }
 
+/**
+ * @brief Parses a unary
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Unary> 
+ */
 auto Parser::parse_unary(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Unary> {
   std::cout << "parse_unary\n";
   auto unary = std::make_unique<AST::Unary>();
@@ -256,6 +337,13 @@ auto Parser::parse_unary(Token& token, Tokens& tokens) -> std::unique_ptr<AST::U
   return unary;
 }
 
+/**
+ * @brief Parses a primary
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Primary> 
+ */
 auto Parser::parse_primary(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Primary> {
   std::cout << "parse_primary\n";
   auto primary = std::make_unique<AST::Primary>();
@@ -284,6 +372,13 @@ auto Parser::parse_primary(Token& token, Tokens& tokens) -> std::unique_ptr<AST:
   syntax_error(_lookahead, Token(Token::Type::IDENTIFIER));
 }
 
+/**
+ * @brief Parses an assignment
+ * 
+ * @param dest token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Assignment> 
+ */
 auto Parser::parse_assignment(Token& dest, Tokens& tokens) -> std::unique_ptr<AST::Assignment> {
   std::cout << "parse_assignment\n";
   auto assignment = std::make_unique<AST::Assignment>();
@@ -297,6 +392,13 @@ auto Parser::parse_assignment(Token& dest, Tokens& tokens) -> std::unique_ptr<AS
   return assignment;
 }
 
+/**
+ * @brief Parses a variable
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Variable> 
+ */
 auto Parser::parse_variable(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Variable> {
   std::cout << "parse_variable\n";
   auto variable = std::make_unique<AST::Variable>();
@@ -311,6 +413,13 @@ auto Parser::parse_variable(Token& token, Tokens& tokens) -> std::unique_ptr<AST
   return variable;
 }
 
+/**
+ * @brief Parses a while statement
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::While> 
+ */
 auto Parser::parse_while(Token& token, Tokens& tokens) -> std::unique_ptr<AST::While> {
   std::cout << "parse_while\n";
   auto whileStatement = std::make_unique<AST::While>();
@@ -329,6 +438,13 @@ auto Parser::parse_while(Token& token, Tokens& tokens) -> std::unique_ptr<AST::W
   return whileStatement;
 }
 
+/**
+ * @brief Parses an exit statement
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Exit> 
+ */
 auto Parser::parse_exit(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Exit> {
   std::cout << "parse_exit\n";
   auto exit = std::make_unique<AST::Exit>();
@@ -338,11 +454,25 @@ auto Parser::parse_exit(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Ex
   return exit;
 }
 
+/**
+ * @brief Parses a push statement
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Push> 
+ */
 auto Parser::parse_push(Token&, Tokens&) -> std::unique_ptr<AST::Push> {
   std::cout << "parse_push\n";
   throw std::runtime_error("Pushes Not implemented");
 }
 
+/**
+ * @brief Parses a declaration
+ * 
+ * @param dest token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Declaration> 
+ */
 auto Parser::parse_declaration(Token& dest, Tokens& tokens) -> std::unique_ptr<AST::Declaration> {
   std::cout << "parse_declaration\n";
   std::unique_ptr<AST::Declaration> declaration = std::make_unique<AST::Declaration>();
@@ -361,6 +491,13 @@ auto Parser::parse_declaration(Token& dest, Tokens& tokens) -> std::unique_ptr<A
   return declaration;
 }
 
+/**
+ * @brief Parses a return statement
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Return> 
+ */
 auto Parser::parse_return(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Return> {
   std::cout << "parse_return\n";
   auto returnStatement = std::make_unique<AST::Return>();
@@ -370,6 +507,13 @@ auto Parser::parse_return(Token& token, Tokens& tokens) -> std::unique_ptr<AST::
   return returnStatement;
 }
 
+/**
+ * @brief Parses a print statement
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::Print> 
+ */
 auto Parser::parse_print(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Print> {
   std::cout << "parse_print\n";
   auto print = std::make_unique<AST::Print>();
@@ -379,6 +523,13 @@ auto Parser::parse_print(Token& token, Tokens& tokens) -> std::unique_ptr<AST::P
   return print;
 }
 
+/**
+ * @brief Matches a token, if it doesn't match it prints a syntax error and exits the program
+ * 
+ * @param types list of types to match
+ * @param token token found
+ * @param tokens list of tokens
+ */
 void Parser::match(std::initializer_list<Token::Type> types, Token& token, Tokens& tokens) {
   for (auto type : types) {
     if (_lookahead.type == type) {
@@ -390,6 +541,16 @@ void Parser::match(std::initializer_list<Token::Type> types, Token& token, Token
   syntax_error(_lookahead, Token(*types.begin()));
 }
 
+/**
+ * @brief Tries to match a token, if it matches it consumes the token and returns true, otherwise it
+ * returns false
+ * 
+ * @param types list of types to match
+ * @param token token found
+ * @param tokens list of tokens
+ * @return true 
+ * @return false 
+ */
 auto Parser::try_match(std::initializer_list<Token::Type> types, Token& token, Tokens& tokens) -> bool {
   for (auto type : types) {
     if (_lookahead.type == type) {
@@ -401,6 +562,12 @@ auto Parser::try_match(std::initializer_list<Token::Type> types, Token& token, T
   return false;
 }
 
+/**
+ * @brief Consumes a token from the list of tokens
+ * 
+ * @param tokens list of tokens
+ * @return Token 
+ */
 auto Parser::consume(Tokens& tokens) -> Token {
   Token temp = _lookahead;
   if (tokens.has_next()) _lookahead = tokens.next();

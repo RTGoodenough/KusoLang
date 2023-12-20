@@ -5,7 +5,15 @@
 #include <unordered_map>
 
 namespace kuso {
+/**
+ * @brief Token class
+ * 
+ */
 struct Token {
+  /**
+   * @brief Token types
+   * 
+   */
   enum class Type {
     IDENTIFIER,
     KEYWORD,
@@ -73,6 +81,12 @@ struct Token {
   DEFAULT_MOVABLE(Token)
 };
 
+/**
+ * @brief Convert token to string
+ * 
+ * @param token Token to convert
+ * @return std::string String representation of token
+ */
 inline auto to_string(const Token& token) -> std::string {
   static const std::unordered_map<Token::Type, std::string> TYPE_MAP{
       {Token::Type::IDENTIFIER, "IDENTIFIER"},

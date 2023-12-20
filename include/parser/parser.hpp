@@ -7,6 +7,10 @@
 #include "parser/ast.hpp"
 
 namespace kuso {
+/**
+  * @brief Parser class
+  * 
+  */
 class Parser {
   NON_DEFAULT_CONSTRUCTIBLE(Parser)
   NON_COPYABLE(Parser)

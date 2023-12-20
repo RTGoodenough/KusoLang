@@ -3,13 +3,17 @@
 #include <map>
 #include <optional>
 
-#include "x86/addressing.hpp"
-#include "x86/x86.hpp"
+#include "x64/addressing.hpp"
+#include "x64/x64.hpp"
 
 namespace kuso {
 
+/**
+ * @brief Holds information about a type
+ * 
+ */
 struct Type_t {
-  int                                       size{x86::Size::QWORD};
+  int                                       size{x64::Size::QWORD};
   std::optional<std::map<std::string, int>> offsets;
 
   [[nodiscard]] auto get_offset(const std::string& attribute) -> int {
@@ -18,11 +22,19 @@ struct Type_t {
   }
 };
 
+/**
+ * @brief Holds information about a variable
+ * 
+ */
 struct Variable {
   int          type{0};
-  x86::Address location;
+  x64::Address location;
 };
 
+/**
+ * @brief Holds a string literal
+ * 
+ */
 struct String {
   std::string name;
   std::string value;

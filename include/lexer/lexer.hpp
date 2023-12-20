@@ -9,6 +9,10 @@
 #include "token.hpp"
 
 namespace kuso {
+/**
+ * @brief Lexer class
+ * 
+ */
 class Lexer {
   NON_DEFAULT_CONSTRUCTIBLE(Lexer)
   NON_COPYABLE(Lexer)

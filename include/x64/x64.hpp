@@ -3,8 +3,17 @@
 #include <stdexcept>
 #include <string>
 
-namespace kuso::x86 {
+namespace kuso::x64 {
+/**
+  * @brief Byte size
+  * 
+  */
 enum Size { BYTE = 1, WORD = 2, DWORD = 4, QWORD = 8 };
+
+/**
+ * @brief x86_64 Registers 
+ * 
+ */
 enum class Register {
   RAX,
   RBX,
@@ -183,7 +192,7 @@ enum class Op {
 
 struct Literal {
   int64_t   value{};
-  x86::Size size{x86::Size::DWORD};
+  x64::Size size{x64::Size::DWORD};
 
   [[nodiscard]] auto to_string() const -> std::string { return std::to_string(value); }
   // NOLINTNEXTLINE(google-explicit-constructor)
@@ -503,4 +512,4 @@ struct Literal {
   }
   throw std::runtime_error("Invalid Op");
 }
-}  // namespace kuso::x86
+}  // namespace kuso::x64

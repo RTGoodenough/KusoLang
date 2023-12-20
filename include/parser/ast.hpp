@@ -9,6 +9,10 @@
 #include "lexer/token.hpp"
 
 namespace kuso {
+/**
+ * @brief Abstract Syntax Tree class
+ * 
+ */
 class AST {
   DEFAULT_CONSTRUCTIBLE(AST)
   DEFAULT_DESTRUCTIBLE(AST)
@@ -16,6 +20,10 @@ class AST {
   NON_COPYABLE(AST)
 
  public:
+  /**
+   * @brief Binary operations
+   * 
+   */
   enum class BinaryOp {
     ADD,
     SUB,
@@ -75,16 +83,28 @@ class AST {
   [[nodiscard]] static auto op_to_string(BinaryOp) -> std::string;
 };
 
+/**
+ * @brief AST node for string literals
+ * 
+ */
 struct AST::String {
   std::string value;
 };
 
+/**
+ * @brief AST node for exit statements
+ * 
+ */
 struct AST::Exit {
   std::unique_ptr<Expression> value;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for declarations
+ * 
+ */
 struct AST::Declaration {
   std::string                 name;
   std::string                 type;
@@ -93,12 +113,20 @@ struct AST::Declaration {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for return statements
+ * 
+ */
 struct AST::Return {
   std::unique_ptr<Expression> value;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for push statements
+ * 
+ */
 struct AST::Push {
   std::unique_ptr<Expression> value;
   std::unique_ptr<Expression> dest;
@@ -106,6 +134,10 @@ struct AST::Push {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for assignments
+ * 
+ */
 struct AST::Assignment {
   std::unique_ptr<Variable>   dest;
   std::unique_ptr<Expression> value;
@@ -113,18 +145,30 @@ struct AST::Assignment {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for print statements
+ * 
+ */
 struct AST::Print {
   std::unique_ptr<Expression> value;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for expressions
+ * 
+ */
 struct AST::Expression {
   std::unique_ptr<Equality> value;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for equality expressions
+ * 
+ */
 struct AST::Equality {
   std::unique_ptr<Comparison> left;
   std::unique_ptr<Equality>   right;
@@ -133,6 +177,10 @@ struct AST::Equality {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for comparison expressions
+ * 
+ */
 struct AST::Comparison {
   std::unique_ptr<Term>       left;
   std::unique_ptr<Comparison> right;
@@ -141,6 +189,10 @@ struct AST::Comparison {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for term expressions
+ * 
+ */
 struct AST::Term {
   std::unique_ptr<Factor> left;
   std::unique_ptr<Term>   right;
@@ -149,6 +201,10 @@ struct AST::Term {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for factor expressions
+ * 
+ */
 struct AST::Factor {
   std::unique_ptr<Unary>  left;
   std::unique_ptr<Factor> right;
@@ -157,12 +213,20 @@ struct AST::Factor {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for unary expressions
+ * 
+ */
 struct AST::Terminal {
   std::variant<std::unique_ptr<Variable>, Token, std::unique_ptr<String>> value;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for unary expressions
+ * 
+ */
 struct AST::Unary {
   std::variant<std::unique_ptr<Unary>, std::unique_ptr<Primary>> value;
   BinaryOp                                                       op;
@@ -170,6 +234,10 @@ struct AST::Unary {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for primary expressions
+ * 
+ */
 struct AST::Primary {
   std::variant<std::unique_ptr<Variable>, std::unique_ptr<Terminal>, std::unique_ptr<Expression>,
                std::unique_ptr<String>>
@@ -178,6 +246,10 @@ struct AST::Primary {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for variable/attribute access
+ * 
+ */
 struct AST::Variable {
   std::string                name;
   std::optional<std::string> attribute;
@@ -185,6 +257,10 @@ struct AST::Variable {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for if statements
+ * 
+ */
 struct AST::If {
   std::unique_ptr<Expression> condition;
   std::vector<Statement>      body;
@@ -193,11 +269,19 @@ struct AST::If {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for type definitions
+ * 
+ */
 struct AST::Attribute {
   std::string name;
   std::string type;
 };
 
+/**
+ * @brief AST node for while statements
+ * 
+ */
 struct AST::While {
   std::unique_ptr<Expression> condition;
   std::vector<Statement>      body;
@@ -205,6 +289,10 @@ struct AST::While {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for type definitions
+ * 
+ */
 struct AST::Type {
   std::string            name;
   std::vector<Attribute> attributes;
@@ -212,6 +300,10 @@ struct AST::Type {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for statements
+ * 
+ */
 struct AST::Statement {
   std::variant<std::unique_ptr<Type>, std::unique_ptr<If>, std::unique_ptr<Exit>, std::unique_ptr<Assignment>,
                std::unique_ptr<Push>, std::unique_ptr<Declaration>, std::unique_ptr<Return>,

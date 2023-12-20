@@ -2,6 +2,10 @@
 
 namespace kuso::lnx {
 
+/**
+ * @brief Linux System Call values
+ * 
+ */
 enum Syscall {
   READ = 0,
   WRITE = 1,

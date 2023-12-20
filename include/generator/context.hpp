@@ -5,12 +5,16 @@
 #include <string>
 
 #include "generator/variables.hpp"
-#include "x86/addressing.hpp"
+#include "x64/addressing.hpp"
 
 namespace kuso {
+/**
+ * @brief Holds information about the current context
+ * 
+ */
 struct Context {
   int                             size;
-  x86::Address                    stack;
+  x64::Address                    stack;
   std::map<std::string, Variable> variables;
   int                             currVariable;
   std::map<std::string, int>      typeIDs;
