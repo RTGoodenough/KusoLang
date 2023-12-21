@@ -74,7 +74,7 @@ auto Lexer::by_token(std::string src) -> belt::Generator<Token> {
  */
 auto Lexer::parse_token() noexcept -> Token {
   // std::cout << "parse_token\n";
-  if (_iter == _source.end()) {
+  if (_iter >= _source.end()) {
     return Token(Token::Type::END_OF_FILE, _line, _col);
   }
 
@@ -88,7 +88,7 @@ auto Lexer::parse_token() noexcept -> Token {
     next();
   }
 
-  if (_iter == _source.end()) {
+  if (_iter >= _source.end()) {
     return Token(Token::Type::END_OF_FILE, _line, _col);
   }
 
@@ -336,9 +336,12 @@ auto Lexer::parse_string() noexcept -> Token {
  * 
  * @return Token resulting token
  */
-auto Lexer::replace_bool_equal() const -> Token {
+auto Lexer::replace_bool_equal() -> Token {
   // std::cout << "replace_bool_equal\n";
+  if (_iter >= _source.end()) return Token(Token::Type::EQUAL, _line, _col);
+
   if (*_iter == '=') {
+    next();
     return Token(Token::Type::BOOL_EQUAL, _line, _col);
   }
 
@@ -351,19 +354,21 @@ auto Lexer::replace_bool_equal() const -> Token {
  * @param greater whether the operator is a greater than or less than operator
  * @return Token resulting token
  */
-auto Lexer::replace_gt_lt(bool greater) const -> Token {
+auto Lexer::replace_gt_lt(bool greater) -> Token {
   // std::cout << "replace_gt_lt\n";
+  if (_iter >= _source.end())
+    return greater ? Token(Token::Type::GREATER_THAN, _line, _col)
+                   : Token(Token::Type::LESS_THAN, _line, _col);
+
   if (*_iter == '=') {
+    next();
     if (greater) {
       return Token(Token::Type::GREATER_THAN_EQUAL, _line, _col);
     }
     return Token(Token::Type::LESS_THAN_EQUAL, _line, _col);
   }
 
-  if (greater) {
-    return Token(Token::Type::GREATER_THAN, _line, _col);
-  }
-  return Token(Token::Type::LESS_THAN, _line, _col);
+  return greater ? Token(Token::Type::GREATER_THAN, _line, _col) : Token(Token::Type::LESS_THAN, _line, _col);
 }
 
 /**
@@ -371,9 +376,12 @@ auto Lexer::replace_gt_lt(bool greater) const -> Token {
  * 
  * @return Token resulting token
  */
-auto Lexer::replace_not_equal() const -> Token {
+auto Lexer::replace_not_equal() -> Token {
   // std::cout << "replace_not_equal\n";
+  if (_iter >= _source.end()) return Token(Token::Type::EXCLAMATION, _line, _col);
+
   if (*_iter == '=') {
+    next();
     return Token(Token::Type::NOT_EQUAL, _line, _col);
   }
 
@@ -418,7 +426,7 @@ auto Lexer::keywords() -> const std::map<std::string, Token::Type>& {
   static const std::map<std::string, Token::Type> KEYWORDS{
       {"if", Token::Type::IF},       {"else", Token::Type::ELSE},     {"for", Token::Type::FOR},
       {"while", Token::Type::WHILE}, {"return", Token::Type::RETURN}, {"exit", Token::Type::EXIT},
-      {"print", Token::Type::PRINT}, {"type", Token::Type::TYPE},     {"while", Token::Type::WHILE},
+      {"print", Token::Type::PRINT}, {"type", Token::Type::TYPE},
   };
   return KEYWORDS;
 }
