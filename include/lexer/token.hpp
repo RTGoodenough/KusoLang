@@ -26,6 +26,7 @@ struct Token {
    * 
    */
   enum class Type {
+    INVALID,
     IDENTIFIER,
     KEYWORD,
     RETURN,

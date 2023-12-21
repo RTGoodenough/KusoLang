@@ -18,6 +18,7 @@
 namespace kuso {
 
 auto Lexer::tokenize(const std::string& str) -> std::vector<Token> {
+  // std::cout << "tokenize\n";
   std::vector<Token> tokens;
   _source = str;
   _iter = _source.begin();
@@ -25,7 +26,7 @@ auto Lexer::tokenize(const std::string& str) -> std::vector<Token> {
   _col = 1;
   Token token{Token::Type::ASTERISK};
 
-  while (token.type != Token::Type::END_OF_FILE) {
+  while (token.type != Token::Type::END_OF_FILE && token.type != Token::Type::INVALID) {
     token = parse_token();
     tokens.push_back(token);
   }
@@ -34,6 +35,7 @@ auto Lexer::tokenize(const std::string& str) -> std::vector<Token> {
 }
 
 auto Lexer::tokenize(const std::filesystem::path& path) -> std::vector<Token> {
+  // std::cout << "tokenize\n";
   belt::File sourcefile(path, std::ios::in);
   if (!sourcefile.is_open()) {
     throw std::runtime_error("Could not open file: " + path.string());
@@ -44,6 +46,7 @@ auto Lexer::tokenize(const std::filesystem::path& path) -> std::vector<Token> {
 }
 
 auto Lexer::by_token(const std::filesystem::path& path) -> belt::Generator<Token> {
+  // std::cout << "by_token\n";
   belt::File sourcefile(path, std::ios::in);
   if (!sourcefile.is_open()) {
     throw std::runtime_error("Could not open file: " + path.string());
@@ -54,6 +57,7 @@ auto Lexer::by_token(const std::filesystem::path& path) -> belt::Generator<Token
 }
 
 auto Lexer::by_token(std::string src) -> belt::Generator<Token> {
+  // std::cout << "by_token\n";
   auto tokens = tokenize(src);
 
   for (auto& token : tokens) {
@@ -68,33 +72,20 @@ auto Lexer::by_token(std::string src) -> belt::Generator<Token> {
  * 
  * @return Token 
  */
-auto Lexer::parse_token() -> Token {
+auto Lexer::parse_token() noexcept -> Token {
+  // std::cout << "parse_token\n";
   if (_iter == _source.end()) {
     return Token(Token::Type::END_OF_FILE, _line, _col);
   }
 
-  ++_iter;
-  ++_col;
-  while (std::isspace(*_iter)) {
-    if (*_iter == '\n') {
-      ++_line;
-      _col = 1;
-    }
-    ++_iter;
-    ++_col;
+  while (std::iswspace(*_iter)) {
+    next();
   }
   while (*_iter == '/') {
     skip_comments();
   }
-
   while (std::iswspace(*_iter)) {
-    if (*_iter == '\n') {
-      ++_line;
-      _col = 1;
-    }
-
-    ++_iter;
-    ++_col;
+    next();
   }
 
   if (_iter == _source.end()) {
@@ -103,105 +94,134 @@ auto Lexer::parse_token() -> Token {
 
   switch (*_iter) {
     case ';':
+      next();
       return Token(Token::Type::SEMI_COLON, _line, _col);
       break;
     case ',':
+      next();
       return Token(Token::Type::COMMA, _line, _col);
       break;
     case '(':
+      next();
       return Token(Token::Type::OPEN_PAREN, _line, _col);
       break;
     case ')':
+      next();
       return Token(Token::Type::CLOSE_PAREN, _line, _col);
       break;
     case '{':
+      next();
       return Token(Token::Type::OPEN_BRACE, _line, _col);
       break;
     case '}':
+      next();
       return Token(Token::Type::CLOSE_BRACE, _line, _col);
       break;
     case '[':
+      next();
       return Token(Token::Type::OPEN_BRACKET, _line, _col);
       break;
     case ']':
+      next();
       return Token(Token::Type::CLOSE_BRACKET, _line, _col);
       break;
     case ':':
+      next();
       return Token(Token::Type::COLON, _line, _col);
       break;
     case '.':
+      next();
       return Token(Token::Type::DOT, _line, _col);
       break;
     case '#':
+      next();
       return Token(Token::Type::HASH, _line, _col);
       break;
     case '@':
+      next();
       return Token(Token::Type::AT, _line, _col);
       break;
     case '&':
+      next();
       return Token(Token::Type::AMPERSAND, _line, _col);
       break;
     case '*':
+      next();
       return Token(Token::Type::ASTERISK, _line, _col);
       break;
     case '+':
+      next();
       return Token(Token::Type::PLUS, _line, _col);
       break;
     case '-':
-      ++_iter;
+      next();
       if (*_iter == '>') {
-        ++_col;
         return Token(Token::Type::ARROW, _line, _col);
       }
-      --_iter;
       return Token(Token::Type::MINUS, _line, _col);
       break;
     case '%':
+      next();
       return Token(Token::Type::PERCENT, _line, _col);
       break;
     case '^':
+      next();
       return Token(Token::Type::CARET, _line, _col);
       break;
     case '~':
+      next();
       return Token(Token::Type::TILDE, _line, _col);
       break;
     case '!':
+      next();
       return replace_not_equal();
       break;
     case '?':
+      next();
       return Token(Token::Type::QUESTION, _line, _col);
       break;
     case '<':
+      next();
       return replace_gt_lt(false);
       break;
     case '>':
+      next();
       return replace_gt_lt(true);
       break;
     case '=':
+      next();
       return replace_bool_equal();
       break;
     case '/':
+      next();
       return Token(Token::Type::SLASH, _line, _col);
       break;
     case '|':
+      next();
       return Token(Token::Type::PIPE, _line, _col);
       break;
     case '"':
+      next();
       return parse_string();
       break;
     case '\'':
+      next();
       return Token(Token::Type::SINGLE_QUOTE, _line, _col);
       break;
     case '\\':
+      next();
       return Token(Token::Type::BACKSLASH, _line, _col);
       break;
     case '`':
+      next();
       return Token(Token::Type::BACKTICK, _line, _col);
       break;
     case '$':
+      next();
       return Token(Token::Type::DOLLAR, _line, _col);
       break;
     case '_':
+      next();
       return Token(Token::Type::UNDERSCORE, _line, _col);
       break;
     default: {
@@ -211,7 +231,8 @@ auto Lexer::parse_token() -> Token {
       if (std::isdigit(*_iter)) {
         return parse_number();
       }
-      throw std::runtime_error(fmt::format("Invalid character: {}", *_iter));
+
+      return Token(Token::Type::INVALID, _line, _col, fmt::format("{}", *_iter));
     }
   }
 }
@@ -222,18 +243,21 @@ auto Lexer::parse_token() -> Token {
  * @return char last character after the comment
  */
 void Lexer::skip_comments() {
+  // std::cout << "skip_comments\n";
+  next();
   if (*_iter == '/') {
-    ++_iter;
-    if (*_iter == '/') {
-      while (*_iter != '\n' && _iter != _source.end()) {
-        ++_iter;
-      }
-      return;
+    while (*_iter != '\n' && (_iter < _source.end())) {
+      next();
     }
-
-    if (*_iter == '*') {
-      while (*_iter != '*' && *(_iter + 1) != '/' && _iter != _source.end()) {
-        ++_iter;
+  } else if (*_iter == '*') {
+    while ((_iter < _source.end())) {
+      next();
+      if (*_iter == '*') {
+        next();
+        if (*_iter == '/') {
+          next();
+          return;
+        }
       }
     }
   }
@@ -245,15 +269,15 @@ void Lexer::skip_comments() {
  * @param *_iter first character of the identifier
  * @return Token resulting token
  */
-auto Lexer::parse_identifier() -> Token {
+auto Lexer::parse_identifier() noexcept -> Token {
+  // std::cout << "parse_identifier\n";
   std::string value;
   value += *_iter;
 
-  ++_iter;
-  while (std::isalnum(*_iter) && !(_iter == _source.end())) {
+  next();
+  while ((_iter < _source.end()) && std::isalnum(*_iter)) {
     value += *_iter;
-    ++_col;
-    ++_iter;
+    next();
   }
 
   auto type = replace_keyword_type(value);
@@ -261,7 +285,6 @@ auto Lexer::parse_identifier() -> Token {
     return Token(type, _line, _col, value);
   }
 
-  --_iter;
   return Token(type, _line, _col);
 }
 
@@ -271,18 +294,17 @@ auto Lexer::parse_identifier() -> Token {
  * @param *_iter first character of the number
  * @return Token resulting token
  */
-auto Lexer::parse_number() -> Token {
+auto Lexer::parse_number() noexcept -> Token {
+  // std::cout << "parse_number\n";
   std::string value;
   value += *_iter;
 
-  ++_iter;
-  while (std::isdigit(*_iter) && !(_iter == _source.end())) {
+  next();
+  while ((_iter < _source.end()) && std::isdigit(*_iter)) {
     value += *_iter;
-    ++_col;
-    ++_iter;
+    next();
   }
 
-  --_iter;
   return Token(Token::Type::NUMBER, _line, _col, value);
 }
 
@@ -291,18 +313,18 @@ auto Lexer::parse_number() -> Token {
  * 
  * @return Token resulting token
  */
-auto Lexer::parse_string() -> Token {
+auto Lexer::parse_string() noexcept -> Token {
+  // std::cout << "parse_string\n";
   std::string value = "\"";
 
-  ++_iter;
-  while (*_iter != '"' && !(_iter == _source.end())) {
+  next();
+  while ((_iter < _source.end()) && *_iter != '"') {
     value += *_iter;
-    ++_col;
-    ++_iter;
+    next();
   }
 
   if (_iter == _source.end()) {
-    throw std::runtime_error("Unterminated string");
+    return Token(Token::Type::INVALID, _line, _col, value);
   }
 
   value += '"';
@@ -314,14 +336,12 @@ auto Lexer::parse_string() -> Token {
  * 
  * @return Token resulting token
  */
-auto Lexer::replace_bool_equal() -> Token {
-  ++_iter;
+auto Lexer::replace_bool_equal() const -> Token {
+  // std::cout << "replace_bool_equal\n";
   if (*_iter == '=') {
-    ++_col;
     return Token(Token::Type::BOOL_EQUAL, _line, _col);
   }
 
-  --_iter;
   return Token(Token::Type::EQUAL, _line, _col);
 }
 
@@ -331,17 +351,15 @@ auto Lexer::replace_bool_equal() -> Token {
  * @param greater whether the operator is a greater than or less than operator
  * @return Token resulting token
  */
-auto Lexer::replace_gt_lt(bool greater) -> Token {
-  ++_iter;
+auto Lexer::replace_gt_lt(bool greater) const -> Token {
+  // std::cout << "replace_gt_lt\n";
   if (*_iter == '=') {
-    ++_col;
     if (greater) {
       return Token(Token::Type::GREATER_THAN_EQUAL, _line, _col);
     }
     return Token(Token::Type::LESS_THAN_EQUAL, _line, _col);
   }
 
-  --_iter;
   if (greater) {
     return Token(Token::Type::GREATER_THAN, _line, _col);
   }
@@ -353,14 +371,12 @@ auto Lexer::replace_gt_lt(bool greater) -> Token {
  * 
  * @return Token resulting token
  */
-auto Lexer::replace_not_equal() -> Token {
-  ++_iter;
+auto Lexer::replace_not_equal() const -> Token {
+  // std::cout << "replace_not_equal\n";
   if (*_iter == '=') {
-    ++_col;
     return Token(Token::Type::NOT_EQUAL, _line, _col);
   }
 
-  --_iter;
   return Token(Token::Type::EXCLAMATION, _line, _col);
 }
 
@@ -372,6 +388,7 @@ auto Lexer::replace_not_equal() -> Token {
  * @return false if the string is not a keyword
  */
 auto Lexer::is_keyword(const std::string& value) -> bool {
+  // std::cout << "is_keyword\n";
   return keywords().find(value) != keywords().end();
 }
 
@@ -382,6 +399,7 @@ auto Lexer::is_keyword(const std::string& value) -> bool {
  * @return Token::Type resulting token type
  */
 auto Lexer::replace_keyword_type(const std::string& value) -> Token::Type {
+  // std::cout << "replace_keyword_type\n";
   auto iter = keywords().find(value);
   if (iter != keywords().end()) {
     return iter->second;
@@ -396,6 +414,7 @@ auto Lexer::replace_keyword_type(const std::string& value) -> Token::Type {
  * @return const std::map<std::string, Token::Type>& keyword map
  */
 auto Lexer::keywords() -> const std::map<std::string, Token::Type>& {
+  // std::cout << "keywords\n";
   static const std::map<std::string, Token::Type> KEYWORDS{
       {"if", Token::Type::IF},       {"else", Token::Type::ELSE},     {"for", Token::Type::FOR},
       {"while", Token::Type::WHILE}, {"return", Token::Type::RETURN}, {"exit", Token::Type::EXIT},

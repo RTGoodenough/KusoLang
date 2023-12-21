@@ -50,14 +50,34 @@ class Lexer {
   [[nodiscard]] static auto keywords() -> const std::map<std::string, Token::Type>&;
   [[nodiscard]] static auto replace_keyword_type(const std::string&) -> Token::Type;
 
-  [[nodiscard]] auto replace_bool_equal() -> Token;
-  [[nodiscard]] auto replace_gt_lt(bool) -> Token;
-  [[nodiscard]] auto replace_not_equal() -> Token;
+  [[nodiscard]] auto replace_bool_equal() const -> Token;
+  [[nodiscard]] auto replace_gt_lt(bool) const -> Token;
+  [[nodiscard]] auto replace_not_equal() const -> Token;
 
   void               skip_comments();
-  [[nodiscard]] auto parse_identifier() -> Token;
-  [[nodiscard]] auto parse_number() -> Token;
-  [[nodiscard]] auto parse_string() -> Token;
-  [[nodiscard]] auto parse_token() -> Token;
+  [[nodiscard]] auto parse_identifier() noexcept -> Token;
+  [[nodiscard]] auto parse_number() noexcept -> Token;
+  [[nodiscard]] auto parse_string() noexcept -> Token;
+  [[nodiscard]] auto parse_token() noexcept -> Token;
+
+  inline constexpr void next() {
+    if (*_iter == '\n') {
+      _line++;
+      _col = 1;
+    } else {
+      _col++;
+    }
+    _iter++;
+  }
+
+  inline constexpr void prev() {
+    if (*_iter == '\n') {
+      _line--;
+      _col = 1;
+    } else {
+      _col--;
+    }
+    _iter--;
+  }
 };
 }  // namespace kuso
