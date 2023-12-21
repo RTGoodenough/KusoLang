@@ -40,10 +40,11 @@ void Parser::syntax_error(const Token& token, const Token& expected) {
  * 
  * @return AST 
  */
-auto Parser::parse() -> AST {
+auto Parser::parse(const std::filesystem::path& sourcepath) -> AST {
   std::cout << "parse\n";
   AST  ast;
-  auto tokens = _lexer.by_token();
+  auto tokens = _lexer.by_token(sourcepath);
+
   consume(tokens);
   auto token = consume(tokens);
 
@@ -79,6 +80,7 @@ auto Parser::parse_statement(Token& token, Tokens& tokens) -> AST::Statement {
         statement.statement = parse_assignment(token, tokens);
         break;
       }
+      syntax_error(token, Token(Token::Type::COLON));
       break;
     case Token::Type::WHILE:
       statement.statement = parse_while(token, tokens);

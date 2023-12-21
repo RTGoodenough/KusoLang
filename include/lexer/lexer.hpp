@@ -13,6 +13,7 @@
 
 #include <filesystem>
 #include <map>
+#include <vector>
 
 #include <belt/class_macros.hpp>
 #include <belt/file.hpp>
@@ -25,26 +26,26 @@ namespace kuso {
  * 
  */
 class Lexer {
-  NON_DEFAULT_CONSTRUCTIBLE(Lexer)
-  NON_COPYABLE(Lexer)
-
+  DEFAULT_CONSTRUCTIBLE(Lexer)
+  DEFAULT_COPYABLE(Lexer)
   DEFAULT_DESTRUCTIBLE(Lexer)
   DEFAULT_MOVABLE(Lexer)
 
- public:
-  explicit Lexer(const std::filesystem::path& path) : _source(path, std::ios::in) {
-    if (!_source.is_open()) {
-      throw std::runtime_error("Could not open file: " + path.string());
-    }
-  }
+  using cstr_iter = std::string_view::const_iterator;
 
-  [[nodiscard]] auto by_token() -> belt::Generator<Token>;
+ public:
+  std::string_view _source;
+  cstr_iter        _iter{};
+  int              _line{1};
+  int              _col{1};
+
+  [[nodiscard]] auto tokenize(const std::filesystem::path&) -> std::vector<Token>;
+  [[nodiscard]] auto tokenize(const std::string&) -> std::vector<Token>;
+
+  [[nodiscard]] auto by_token(const std::filesystem::path&) -> belt::Generator<Token>;
+  [[nodiscard]] auto by_token(std::string) -> belt::Generator<Token>;
 
  private:
-  belt::File _source;
-  int        _line{1};
-  int        _column{1};
-
   [[nodiscard]] static auto is_keyword(const std::string&) -> bool;
   [[nodiscard]] static auto keywords() -> const std::map<std::string, Token::Type>&;
   [[nodiscard]] static auto replace_keyword_type(const std::string&) -> Token::Type;
@@ -53,9 +54,9 @@ class Lexer {
   [[nodiscard]] auto replace_gt_lt(bool) -> Token;
   [[nodiscard]] auto replace_not_equal() -> Token;
 
-  [[nodiscard]] auto skip_comments() -> char;
-  [[nodiscard]] auto parse_identifier(char) -> Token;
-  [[nodiscard]] auto parse_number(char) -> Token;
+  void               skip_comments();
+  [[nodiscard]] auto parse_identifier() -> Token;
+  [[nodiscard]] auto parse_number() -> Token;
   [[nodiscard]] auto parse_string() -> Token;
   [[nodiscard]] auto parse_token() -> Token;
 };

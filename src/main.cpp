@@ -25,10 +25,10 @@ auto main(int argc, const char** argv) -> int {
   std::filesystem::path inpath = pirate::Args::get("in");
   std::filesystem::path outpath = pirate::Args::get("out");
 
-  kuso::Parser    parser(inpath);
+  kuso::Parser    parser;
   kuso::Generator generator(outpath);
 
-  auto ast = parser.parse();
+  auto ast = parser.parse(inpath);
   std::cout << ast.to_string() << '\n';
 
   generator.generate(ast);

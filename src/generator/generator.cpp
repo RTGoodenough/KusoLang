@@ -815,9 +815,10 @@ auto Generator::get_location(const AST::Variable& variable) -> x64::Address {
  */
 auto Generator::get_identifier(const AST::Terminal& terminal) -> const std::string& {
   return belt::overloaded_visit<const std::string&>(
-      terminal.value, [&](const std::unique_ptr<AST::Variable>& variable) { return variable->name; },
-      [&](const Token& token) { return token.value; },
-      [&](const std::unique_ptr<AST::String>& string) { return string->value; });
+      terminal.value,
+      [&](const std::unique_ptr<AST::Variable>& variable) -> const std::string& { return variable->name; },
+      [&](const Token& token) -> const std::string& { return token.value; },
+      [&](const std::unique_ptr<AST::String>& str) -> const std::string& { return str->value; });
 }
 
 /**

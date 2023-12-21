@@ -29,6 +29,26 @@ class File {
                   return chr;
   }
 
+  [[nodiscard]] auto read() -> std::string {
+    std::string str;
+    char        chr = '\0';
+    while (_file.get(chr)) {
+      str += chr;
+    }
+
+    return str;
+  }
+  [[nodiscard]] auto read_line() -> std::string {
+    std::string line;
+    std::getline(_file, line);
+    return line;
+  }
+  [[nodiscard]] auto read_hex() -> std::uint8_t {
+    std::uint8_t hex = 0;
+    _file >> std::hex >> hex;
+    return hex;
+  }
+
   void write_ln(const std::string& str) { _file << str << '\n'; }
   void write(const std::string& str) { _file << str; }
   void write(char chr) { _file << chr; }

@@ -17,18 +17,50 @@
 
 namespace kuso {
 
-/**
- * @brief Creates a token generator from a source file
- * 
- * @return belt::Generator<Token> 
- */
-auto Lexer::by_token() -> belt::Generator<Token> {
-  while (true) {
-    if (_source.eof()) {
-      co_yield Token(Token::Type::END_OF_FILE, _line, _column);
-    }
-    co_yield parse_token();
+auto Lexer::tokenize(const std::string& str) -> std::vector<Token> {
+  std::vector<Token> tokens;
+  _source = str;
+  _iter = _source.begin();
+  _line = 1;
+  _col = 1;
+  Token token{Token::Type::ASTERISK};
+
+  while (token.type != Token::Type::END_OF_FILE) {
+    token = parse_token();
+    tokens.push_back(token);
   }
+
+  return tokens;
+}
+
+auto Lexer::tokenize(const std::filesystem::path& path) -> std::vector<Token> {
+  belt::File sourcefile(path, std::ios::in);
+  if (!sourcefile.is_open()) {
+    throw std::runtime_error("Could not open file: " + path.string());
+  }
+
+  auto source = sourcefile.read();
+  return tokenize(source);
+}
+
+auto Lexer::by_token(const std::filesystem::path& path) -> belt::Generator<Token> {
+  belt::File sourcefile(path, std::ios::in);
+  if (!sourcefile.is_open()) {
+    throw std::runtime_error("Could not open file: " + path.string());
+  }
+
+  auto source = sourcefile.read();
+  return by_token(source);
+}
+
+auto Lexer::by_token(std::string src) -> belt::Generator<Token> {
+  auto tokens = tokenize(src);
+
+  for (auto& token : tokens) {
+    co_yield token;
+  }
+
+  while (true) co_yield Token(Token::Type::END_OF_FILE, 0, 0);
 }
 
 /**
@@ -37,107 +69,107 @@ auto Lexer::by_token() -> belt::Generator<Token> {
  * @return Token 
  */
 auto Lexer::parse_token() -> Token {
-  if (_source.eof()) {
-    return Token(Token::Type::END_OF_FILE, _line, _column);
+  if (_iter == _source.end()) {
+    return Token(Token::Type::END_OF_FILE, _line, _col);
   }
 
-  char chr = _source.next_char();
-  ++_column;
-  while (std::isspace(chr)) {
-    if (chr == '\n') {
+  ++_iter;
+  ++_col;
+  while (std::isspace(*_iter)) {
+    if (*_iter == '\n') {
       ++_line;
-      _column = 1;
+      _col = 1;
     }
-    chr = _source.next_char();
-    ++_column;
+    ++_iter;
+    ++_col;
   }
-  while (chr == '/') {
-    chr = skip_comments();
+  while (*_iter == '/') {
+    skip_comments();
   }
 
-  while (std::iswspace(chr)) {
-    if (chr == '\n') {
+  while (std::iswspace(*_iter)) {
+    if (*_iter == '\n') {
       ++_line;
-      _column = 1;
+      _col = 1;
     }
 
-    chr = _source.next_char();
-    ++_column;
+    ++_iter;
+    ++_col;
   }
 
-  if (_source.eof()) {
-    return Token(Token::Type::END_OF_FILE, _line, _column);
+  if (_iter == _source.end()) {
+    return Token(Token::Type::END_OF_FILE, _line, _col);
   }
 
-  switch (chr) {
+  switch (*_iter) {
     case ';':
-      return Token(Token::Type::SEMI_COLON, _line, _column);
+      return Token(Token::Type::SEMI_COLON, _line, _col);
       break;
     case ',':
-      return Token(Token::Type::COMMA, _line, _column);
+      return Token(Token::Type::COMMA, _line, _col);
       break;
     case '(':
-      return Token(Token::Type::OPEN_PAREN, _line, _column);
+      return Token(Token::Type::OPEN_PAREN, _line, _col);
       break;
     case ')':
-      return Token(Token::Type::CLOSE_PAREN, _line, _column);
+      return Token(Token::Type::CLOSE_PAREN, _line, _col);
       break;
     case '{':
-      return Token(Token::Type::OPEN_BRACE, _line, _column);
+      return Token(Token::Type::OPEN_BRACE, _line, _col);
       break;
     case '}':
-      return Token(Token::Type::CLOSE_BRACE, _line, _column);
+      return Token(Token::Type::CLOSE_BRACE, _line, _col);
       break;
     case '[':
-      return Token(Token::Type::OPEN_BRACKET, _line, _column);
+      return Token(Token::Type::OPEN_BRACKET, _line, _col);
       break;
     case ']':
-      return Token(Token::Type::CLOSE_BRACKET, _line, _column);
+      return Token(Token::Type::CLOSE_BRACKET, _line, _col);
       break;
     case ':':
-      return Token(Token::Type::COLON, _line, _column);
+      return Token(Token::Type::COLON, _line, _col);
       break;
     case '.':
-      return Token(Token::Type::DOT, _line, _column);
+      return Token(Token::Type::DOT, _line, _col);
       break;
     case '#':
-      return Token(Token::Type::HASH, _line, _column);
+      return Token(Token::Type::HASH, _line, _col);
       break;
     case '@':
-      return Token(Token::Type::AT, _line, _column);
+      return Token(Token::Type::AT, _line, _col);
       break;
     case '&':
-      return Token(Token::Type::AMPERSAND, _line, _column);
+      return Token(Token::Type::AMPERSAND, _line, _col);
       break;
     case '*':
-      return Token(Token::Type::ASTERISK, _line, _column);
+      return Token(Token::Type::ASTERISK, _line, _col);
       break;
     case '+':
-      return Token(Token::Type::PLUS, _line, _column);
+      return Token(Token::Type::PLUS, _line, _col);
       break;
     case '-':
-      if (_source.peek_char() == '>') {
-        chr = _source.next_char();
-        ++_column;
-        return Token(Token::Type::ARROW, _line, _column);
-      } else {
-        return Token(Token::Type::MINUS, _line, _column);
+      ++_iter;
+      if (*_iter == '>') {
+        ++_col;
+        return Token(Token::Type::ARROW, _line, _col);
       }
+      --_iter;
+      return Token(Token::Type::MINUS, _line, _col);
       break;
     case '%':
-      return Token(Token::Type::PERCENT, _line, _column);
+      return Token(Token::Type::PERCENT, _line, _col);
       break;
     case '^':
-      return Token(Token::Type::CARET, _line, _column);
+      return Token(Token::Type::CARET, _line, _col);
       break;
     case '~':
-      return Token(Token::Type::TILDE, _line, _column);
+      return Token(Token::Type::TILDE, _line, _col);
       break;
     case '!':
       return replace_not_equal();
       break;
     case '?':
-      return Token(Token::Type::QUESTION, _line, _column);
+      return Token(Token::Type::QUESTION, _line, _col);
       break;
     case '<':
       return replace_gt_lt(false);
@@ -149,37 +181,37 @@ auto Lexer::parse_token() -> Token {
       return replace_bool_equal();
       break;
     case '/':
-      return Token(Token::Type::SLASH, _line, _column);
+      return Token(Token::Type::SLASH, _line, _col);
       break;
     case '|':
-      return Token(Token::Type::PIPE, _line, _column);
+      return Token(Token::Type::PIPE, _line, _col);
       break;
     case '"':
       return parse_string();
       break;
     case '\'':
-      return Token(Token::Type::SINGLE_QUOTE, _line, _column);
+      return Token(Token::Type::SINGLE_QUOTE, _line, _col);
       break;
     case '\\':
-      return Token(Token::Type::BACKSLASH, _line, _column);
+      return Token(Token::Type::BACKSLASH, _line, _col);
       break;
     case '`':
-      return Token(Token::Type::BACKTICK, _line, _column);
+      return Token(Token::Type::BACKTICK, _line, _col);
       break;
     case '$':
-      return Token(Token::Type::DOLLAR, _line, _column);
+      return Token(Token::Type::DOLLAR, _line, _col);
       break;
     case '_':
-      return Token(Token::Type::UNDERSCORE, _line, _column);
+      return Token(Token::Type::UNDERSCORE, _line, _col);
       break;
     default: {
-      if (std::isalpha(chr)) {
-        return parse_identifier(chr);
+      if (std::isalpha(*_iter)) {
+        return parse_identifier();
       }
-      if (std::isdigit(chr)) {
-        return parse_number(chr);
+      if (std::isdigit(*_iter)) {
+        return parse_number();
       }
-      throw std::runtime_error(fmt::format("Invalid character: {}", chr));
+      throw std::runtime_error(fmt::format("Invalid character: {}", *_iter));
     }
   }
 }
@@ -189,77 +221,69 @@ auto Lexer::parse_token() -> Token {
  * 
  * @return char last character after the comment
  */
-auto Lexer::skip_comments() -> char {
-  if (_source.peek_char() == '/') {
-    while (_source.next_char() != '\n') {
+void Lexer::skip_comments() {
+  if (*_iter == '/') {
+    ++_iter;
+    if (*_iter == '/') {
+      while (*_iter != '\n' && _iter != _source.end()) {
+        ++_iter;
+      }
+      return;
     }
-    ++_line;
-    _column = 1;
-  } else if (_source.peek_char() == '*') {
-    _source.next_char();
-    ++_column;
-    while (true) {
-      if (_source.eof()) {
-        throw std::runtime_error("Unterminated comment");
+
+    if (*_iter == '*') {
+      while (*_iter != '*' && *(_iter + 1) != '/' && _iter != _source.end()) {
+        ++_iter;
       }
-      if (_source.peek_char() == '*') {
-        _source.next_char();
-        ++_column;
-        if (_source.peek_char() == '/') {
-          _source.next_char();
-          ++_column;
-          break;
-        }
-      }
-      if (_source.peek_char() == '\n') {
-        ++_line;
-        _column = 1;
-      }
-      _source.next_char();
-      ++_column;
     }
   }
-
-  ++_column;
-  return _source.next_char();
 }
 
 /**
  * @brief Parses an identifier, returning it as a keyword if it is one
  * 
- * @param chr first character of the identifier
+ * @param *_iter first character of the identifier
  * @return Token resulting token
  */
-auto Lexer::parse_identifier(char chr) -> Token {
+auto Lexer::parse_identifier() -> Token {
   std::string value;
-  value += chr;
-  while (std::isalnum(_source.peek_char()) && !_source.eof()) {
-    value += _source.next_char();
-    ++_column;
-  }
-  auto type = replace_keyword_type(value);
-  if (type == Token::Type::IDENTIFIER) {
-    return Token(type, _line, _column, value);
+  value += *_iter;
+
+  ++_iter;
+  while (std::isalnum(*_iter) && !(_iter == _source.end())) {
+    value += *_iter;
+    ++_col;
+    ++_iter;
   }
 
-  return Token(type, _line, _column);
+  auto type = replace_keyword_type(value);
+  if (type == Token::Type::IDENTIFIER) {
+    return Token(type, _line, _col, value);
+  }
+
+  --_iter;
+  return Token(type, _line, _col);
 }
 
 /**
  * @brief Parses a number
  * 
- * @param chr first character of the number
+ * @param *_iter first character of the number
  * @return Token resulting token
  */
-auto Lexer::parse_number(char chr) -> Token {
+auto Lexer::parse_number() -> Token {
   std::string value;
-  value += chr;
-  while (std::isdigit(_source.peek_char()) && !_source.eof()) {
-    value += _source.next_char();
-    ++_column;
+  value += *_iter;
+
+  ++_iter;
+  while (std::isdigit(*_iter) && !(_iter == _source.end())) {
+    value += *_iter;
+    ++_col;
+    ++_iter;
   }
 
-  return Token(Token::Type::NUMBER, _line, _column, value);
+  --_iter;
+  return Token(Token::Type::NUMBER, _line, _col, value);
 }
 
 /**
@@ -269,16 +293,20 @@ auto Lexer::parse_number(char chr) -> Token {
  */
 auto Lexer::parse_string() -> Token {
   std::string value = "\"";
-  while (_source.peek_char() != '"' && !_source.eof()) {
-    value += _source.next_char();
-    ++_column;
+
+  ++_iter;
+  while (*_iter != '"' && !(_iter == _source.end())) {
+    value += *_iter;
+    ++_col;
+    ++_iter;
   }
 
-  if (_source.eof()) {
+  if (_iter == _source.end()) {
     throw std::runtime_error("Unterminated string");
   }
-  value += _source.next_char();
-  return Token(Token::Type::STRING, _line, _column, value);
+
+  value += '"';
+  return Token(Token::Type::STRING, _line, _col, value);
 }
 
 /**
@@ -287,13 +315,14 @@ auto Lexer::parse_string() -> Token {
  * @return Token resulting token
  */
 auto Lexer::replace_bool_equal() -> Token {
-  if (_source.peek_char() == '=') {
-    _source.next_char();
-    ++_column;
-    return Token(Token::Type::BOOL_EQUAL, _line, _column);
+  ++_iter;
+  if (*_iter == '=') {
+    ++_col;
+    return Token(Token::Type::BOOL_EQUAL, _line, _col);
   }
 
-  return Token(Token::Type::EQUAL, _line, _column);
+  --_iter;
+  return Token(Token::Type::EQUAL, _line, _col);
 }
 
 /**
@@ -303,19 +332,20 @@ auto Lexer::replace_bool_equal() -> Token {
  * @return Token resulting token
  */
 auto Lexer::replace_gt_lt(bool greater) -> Token {
-  if (_source.peek_char() == '=') {
-    _source.next_char();
-    ++_column;
+  ++_iter;
+  if (*_iter == '=') {
+    ++_col;
     if (greater) {
-      return Token(Token::Type::GREATER_THAN_EQUAL, _line, _column);
+      return Token(Token::Type::GREATER_THAN_EQUAL, _line, _col);
     }
-    return Token(Token::Type::LESS_THAN_EQUAL, _line, _column);
+    return Token(Token::Type::LESS_THAN_EQUAL, _line, _col);
   }
 
+  --_iter;
   if (greater) {
-    return Token(Token::Type::GREATER_THAN, _line, _column);
+    return Token(Token::Type::GREATER_THAN, _line, _col);
   }
-  return Token(Token::Type::LESS_THAN, _line, _column);
+  return Token(Token::Type::LESS_THAN, _line, _col);
 }
 
 /**
@@ -324,13 +354,14 @@ auto Lexer::replace_gt_lt(bool greater) -> Token {
  * @return Token resulting token
  */
 auto Lexer::replace_not_equal() -> Token {
-  if (_source.peek_char() == '=') {
-    _source.next_char();
-    ++_column;
-    return Token(Token::Type::NOT_EQUAL, _line, _column);
+  ++_iter;
+  if (*_iter == '=') {
+    ++_col;
+    return Token(Token::Type::NOT_EQUAL, _line, _col);
   }
 
-  return Token(Token::Type::EXCLAMATION, _line, _column);
+  --_iter;
+  return Token(Token::Type::EXCLAMATION, _line, _col);
 }
 
 /**

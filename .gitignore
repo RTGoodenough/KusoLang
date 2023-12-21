@@ -34,7 +34,10 @@
 # VS code
 .clangd
 .vscode
+.cache
 
 # Build
 build
 temp
+morasu
+kuso_test
