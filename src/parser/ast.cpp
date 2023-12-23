@@ -44,6 +44,13 @@ auto AST::to_string() const -> std::string {
 }
 
 /**
+ * @brief Returns a reference to the ast statements vector
+ * 
+ * @return const std::vector<Statement>& 
+ */
+auto AST::statements() const -> const std::vector<Statement>& { return _statements; }
+
+/**
  * @brief Adds a statement to the AST
  * 
  * @param statement 

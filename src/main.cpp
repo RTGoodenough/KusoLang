@@ -9,29 +9,29 @@
  * See file LICENSE for the full License
  */
 
-#include <cstdlib>
-#include <filesystem>
-#include <pirate.hpp>
-
 #include "generator/generator.hpp"
+#include "logging/logging.hpp"
 #include "parser/parser.hpp"
 #include "setup/setup.hpp"
 #include "types/arg_types.hpp"
 
 auto main(int argc, const char** argv) -> int {
-  register_args();
-  pirate::Args::parse(argc, argv);
+  if (!kuso::initialize(argc, argv)) return 0;
 
   std::filesystem::path inpath = pirate::Args::get("in");
   std::filesystem::path outpath = pirate::Args::get("out");
 
-  kuso::Parser    parser;
-  kuso::Generator generator(outpath);
+  kuso::Logging::set_level(kuso::Logging::level(pirate::Args::get("log")));
 
-  auto ast = parser.parse(inpath);
-  std::cout << ast.to_string() << '\n';
+  kuso::Parser parser;
+  auto         ast = parser.parse(inpath);
 
-  generator.generate(ast);
+  if (ast) {
+    kuso::Generator generator(outpath);
+    kuso::Logging::debug(ast->to_string());
+    generator.generate(ast.value());
+    return 0;
+  }
 
-  return 0;
+  return -1;
 }

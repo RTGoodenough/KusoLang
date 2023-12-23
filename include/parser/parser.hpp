@@ -31,7 +31,12 @@ class Parser {
   using Tokens = belt::Generator<Token>;
 
  public:
-  [[nodiscard]] auto parse(const std::filesystem::path&) -> AST;
+  [[nodiscard]] auto parse(const std::filesystem::path&) -> std::optional<AST>;
+  [[nodiscard]] auto parse(const std::vector<Token>&) -> std::optional<AST>;
+
+  struct ParseError : public std::runtime_error {
+    explicit ParseError(const std::string& what) : std::runtime_error(what) {}
+  };
 
  private:
   Lexer _lexer;

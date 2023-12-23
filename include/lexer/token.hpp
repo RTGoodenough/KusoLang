@@ -78,6 +78,7 @@ struct Token {
     BACKTICK,
     DOLLAR,
     UNDERSCORE,
+    COUNT,
   };
 
   Type        type{Type::END_OF_FILE};

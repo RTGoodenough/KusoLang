@@ -10,12 +10,17 @@
  */
 
 #include <algorithm>
+#include <cstddef>
+#include <functional>
 #include <initializer_list>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
 
+#include <fmt/format.h>
+
 #include "lexer/token.hpp"
+#include "logging/logging.hpp"
 #include "parser/ast.hpp"
 #include "parser/parser.hpp"
 
@@ -28,11 +33,8 @@ namespace kuso {
  * @param expected expected token
  */
 void Parser::syntax_error(const Token& token, const Token& expected) {
-  std::cerr << "Syntax Error: Line " << std::to_string(token.line) << " Column "
-            << std::to_string(token.column) << "\nExpected: " << to_string(expected)
-            << "\nFound: " << to_string(token) << "\n";
-
-  std::exit(1);
+  throw ParseError(fmt::format("Syntax Error: Line {} Column {}\nExpected: {}\nFound: {}", token.line,
+                               token.column, to_string(expected), to_string(token)));
 }
 
 /**
@@ -40,19 +42,60 @@ void Parser::syntax_error(const Token& token, const Token& expected) {
  * 
  * @return AST 
  */
-auto Parser::parse(const std::filesystem::path& sourcepath) -> AST {
-  std::cout << "parse\n";
+auto Parser::parse(const std::filesystem::path& sourcepath) -> std::optional<AST> {
+  // std::cout << "parse\n";
   AST  ast;
   auto tokens = _lexer.by_token(sourcepath);
 
   consume(tokens);
   auto token = consume(tokens);
 
-  while (tokens.has_next()) {
-    if (_lookahead.type == Token::Type::END_OF_FILE) {
-      break;
+  try {
+    while (tokens.has_next()) {
+      if (_lookahead.type == Token::Type::END_OF_FILE) {
+        break;
+      }
+      ast.add_statement(parse_statement(token, tokens));
     }
-    ast.add_statement(parse_statement(token, tokens));
+  } catch (const ParseError& e) {
+    Logging::error(e.what());
+    return std::nullopt;
+  }
+
+  return ast;
+}
+
+[[nodiscard]] auto token_gen(std::reference_wrapper<const std::vector<Token>> tokens)
+    -> belt::Generator<Token> {
+  auto token = tokens.get().begin();
+  while (token != tokens.get().end()) {
+    co_yield Token(*token);
+    token++;
+  }
+  while (true) {
+    co_yield Token(Token::Type::END_OF_FILE);
+  }
+}
+
+auto Parser::parse(const std::vector<Token>& tokens) -> std::optional<AST> {
+  // std::cout << "parse\n";
+  AST ast;
+
+  auto tokenGen = token_gen(std::cref(tokens));
+
+  consume(tokenGen);
+  auto token = consume(tokenGen);
+
+  try {
+    while (tokenGen.has_next()) {
+      if (_lookahead.type == Token::Type::END_OF_FILE) {
+        break;
+      }
+      ast.add_statement(parse_statement(token, tokenGen));
+    }
+  } catch (const ParseError& e) {
+    Logging::error(e.what());
+    return std::nullopt;
   }
 
   return ast;
@@ -66,7 +109,7 @@ auto Parser::parse(const std::filesystem::path& sourcepath) -> AST {
  * @return AST::Statement 
  */
 auto Parser::parse_statement(Token& token, Tokens& tokens) -> AST::Statement {
-  std::cout << "parse_statement\n";
+  // std::cout << "parse_statement\n";
   AST::Statement                                   statement{nullptr};
   std::optional<std::unique_ptr<AST::Declaration>> decl;
 
@@ -117,7 +160,7 @@ auto Parser::parse_statement(Token& token, Tokens& tokens) -> AST::Statement {
  * @return std::unique_ptr<AST::If> 
  */
 auto Parser::parse_if(Token& token, Tokens& tokens) -> std::unique_ptr<AST::If> {
-  std::cout << "parse_if\n";
+  // std::cout << "parse_if\n";
   // TODO(rolland): add else to if statements
   auto ifStatement = std::make_unique<AST::If>();
 
@@ -152,7 +195,7 @@ auto Parser::parse_if(Token& token, Tokens& tokens) -> std::unique_ptr<AST::If> 
  * @return std::unique_ptr<AST::Type> 
  */
 auto Parser::parse_type(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Type> {
-  std::cout << "parse_type\n";
+  // std::cout << "parse_type\n";
   auto type = std::make_unique<AST::Type>();
 
   match({Token::Type::IDENTIFIER}, token, tokens);
@@ -176,7 +219,7 @@ auto Parser::parse_type(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Ty
  * @return AST::Attribute 
  */
 auto Parser::parse_attribute(Token& token, Tokens& tokens) -> AST::Attribute {
-  std::cout << "parse_attribute\n";
+  // std::cout << "parse_attribute\n";
   auto attribute = AST::Attribute{};
 
   match({Token::Type::IDENTIFIER}, token, tokens);
@@ -197,7 +240,7 @@ auto Parser::parse_attribute(Token& token, Tokens& tokens) -> AST::Attribute {
  * @return std::unique_ptr<AST::Expression> 
  */
 auto Parser::parse_expression(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Expression> {
-  std::cout << "parse_expression\n";
+  // std::cout << "parse_expression\n";
   return std::make_unique<AST::Expression>(parse_equality(token, tokens));
 }
 
@@ -209,7 +252,7 @@ auto Parser::parse_expression(Token& token, Tokens& tokens) -> std::unique_ptr<A
  * @return std::unique_ptr<AST::Equality> 
  */
 auto Parser::parse_equality(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Equality> {
-  std::cout << "parse_equality\n";
+  // std::cout << "parse_equality\n";
   auto equality = std::make_unique<AST::Equality>();
   equality->left = parse_comparison(token, tokens);
 
@@ -229,7 +272,7 @@ auto Parser::parse_equality(Token& token, Tokens& tokens) -> std::unique_ptr<AST
  * @return std::unique_ptr<AST::Comparison> 
  */
 auto Parser::parse_comparison(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Comparison> {
-  std::cout << "parse_comparison\n";
+  // std::cout << "parse_comparison\n";
   auto comparison = std::make_unique<AST::Comparison>();
   comparison->left = parse_term(token, tokens);
 
@@ -266,7 +309,7 @@ auto Parser::parse_comparison(Token& token, Tokens& tokens) -> std::unique_ptr<A
  * @return std::unique_ptr<AST::Term> 
  */
 auto Parser::parse_term(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Term> {
-  std::cout << "parse_term\n";
+  // std::cout << "parse_term\n";
   auto term = std::make_unique<AST::Term>();
   term->left = parse_factor(token, tokens);
 
@@ -295,7 +338,7 @@ auto Parser::parse_term(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Te
  * @return std::unique_ptr<AST::Factor> 
  */
 auto Parser::parse_factor(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Factor> {
-  std::cout << "parse_factor\n";
+  // std::cout << "parse_factor\n";
   auto factor = std::make_unique<AST::Factor>();
   factor->left = parse_unary(token, tokens);
 
@@ -327,7 +370,7 @@ auto Parser::parse_factor(Token& token, Tokens& tokens) -> std::unique_ptr<AST::
  * @return std::unique_ptr<AST::Unary> 
  */
 auto Parser::parse_unary(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Unary> {
-  std::cout << "parse_unary\n";
+  // std::cout << "parse_unary\n";
   auto unary = std::make_unique<AST::Unary>();
 
   while (try_match({Token::Type::MINUS, Token::Type::EXCLAMATION}, token, tokens)) {
@@ -356,7 +399,7 @@ auto Parser::parse_unary(Token& token, Tokens& tokens) -> std::unique_ptr<AST::U
  * @return std::unique_ptr<AST::Primary> 
  */
 auto Parser::parse_primary(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Primary> {
-  std::cout << "parse_primary\n";
+  // std::cout << "parse_primary\n";
   auto primary = std::make_unique<AST::Primary>();
 
   if (try_match({Token::Type::STRING}, token, tokens)) {
@@ -391,7 +434,7 @@ auto Parser::parse_primary(Token& token, Tokens& tokens) -> std::unique_ptr<AST:
  * @return std::unique_ptr<AST::Assignment> 
  */
 auto Parser::parse_assignment(Token& dest, Tokens& tokens) -> std::unique_ptr<AST::Assignment> {
-  std::cout << "parse_assignment\n";
+  // std::cout << "parse_assignment\n";
   auto assignment = std::make_unique<AST::Assignment>();
 
   assignment->dest = parse_variable(dest, tokens);
@@ -411,7 +454,7 @@ auto Parser::parse_assignment(Token& dest, Tokens& tokens) -> std::unique_ptr<AS
  * @return std::unique_ptr<AST::Variable> 
  */
 auto Parser::parse_variable(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Variable> {
-  std::cout << "parse_variable\n";
+  // std::cout << "parse_variable\n";
   auto variable = std::make_unique<AST::Variable>();
 
   variable->name = token.value;
@@ -432,7 +475,7 @@ auto Parser::parse_variable(Token& token, Tokens& tokens) -> std::unique_ptr<AST
  * @return std::unique_ptr<AST::While> 
  */
 auto Parser::parse_while(Token& token, Tokens& tokens) -> std::unique_ptr<AST::While> {
-  std::cout << "parse_while\n";
+  // std::cout << "parse_while\n";
   auto whileStatement = std::make_unique<AST::While>();
 
   match({Token::Type::OPEN_PAREN}, token, tokens);
@@ -457,7 +500,7 @@ auto Parser::parse_while(Token& token, Tokens& tokens) -> std::unique_ptr<AST::W
  * @return std::unique_ptr<AST::Exit> 
  */
 auto Parser::parse_exit(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Exit> {
-  std::cout << "parse_exit\n";
+  // std::cout << "parse_exit\n";
   auto exit = std::make_unique<AST::Exit>();
 
   exit->value = parse_expression(token, tokens);
@@ -473,7 +516,7 @@ auto Parser::parse_exit(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Ex
  * @return std::unique_ptr<AST::Push> 
  */
 auto Parser::parse_push(Token&, Tokens&) -> std::unique_ptr<AST::Push> {
-  std::cout << "parse_push\n";
+  // std::cout << "parse_push\n";
   throw std::runtime_error("Pushes Not implemented");
 }
 
@@ -485,7 +528,7 @@ auto Parser::parse_push(Token&, Tokens&) -> std::unique_ptr<AST::Push> {
  * @return std::unique_ptr<AST::Declaration> 
  */
 auto Parser::parse_declaration(Token& dest, Tokens& tokens) -> std::unique_ptr<AST::Declaration> {
-  std::cout << "parse_declaration\n";
+  // std::cout << "parse_declaration\n";
   std::unique_ptr<AST::Declaration> declaration = std::make_unique<AST::Declaration>();
 
   declaration->name = dest.value;
@@ -510,7 +553,7 @@ auto Parser::parse_declaration(Token& dest, Tokens& tokens) -> std::unique_ptr<A
  * @return std::unique_ptr<AST::Return> 
  */
 auto Parser::parse_return(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Return> {
-  std::cout << "parse_return\n";
+  // std::cout << "parse_return\n";
   auto returnStatement = std::make_unique<AST::Return>();
 
   returnStatement->value = parse_expression(token, tokens);
@@ -526,7 +569,7 @@ auto Parser::parse_return(Token& token, Tokens& tokens) -> std::unique_ptr<AST::
  * @return std::unique_ptr<AST::Print> 
  */
 auto Parser::parse_print(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Print> {
-  std::cout << "parse_print\n";
+  // std::cout << "parse_print\n";
   auto print = std::make_unique<AST::Print>();
 
   print->value = parse_expression(token, tokens);

@@ -81,6 +81,7 @@ class AST {
   using const_iterator = std::vector<Statement>::const_iterator;
 
   void               add_statement(Statement&&);
+  [[nodiscard]] auto statements() const -> const std::vector<Statement>&;
   [[nodiscard]] auto to_string() const -> std::string;
 
   [[nodiscard]] auto begin() -> iterator;
