@@ -22,7 +22,7 @@ struct Address {
 
   Mode     mode{Mode::DIRECT};
   Register reg{Register::NONE};
-  int      disp{0};
+  int64_t  disp{0};
 
   [[nodiscard]] auto to_string() const -> std::string {
     switch (mode) {

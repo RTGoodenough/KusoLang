@@ -24,7 +24,7 @@ namespace kuso {
  * 
  */
 struct Context {
-  int                             size;
+  int64_t                         size;
   x64::Address                    stack;
   std::map<std::string, Variable> variables;
   int                             currVariable;

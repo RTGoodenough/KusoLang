@@ -119,6 +119,12 @@ auto Parser::parse_statement(Token& token, Tokens& tokens) -> AST::Statement {
         statement.statement = parse_declaration(token, tokens);
         break;
       }
+
+      if (_lookahead.type == Token::Type::OPEN_PAREN) {
+        statement.statement = parse_call(token, tokens);
+        break;
+      }
+
       if (_lookahead.type == Token::Type::EQUAL || _lookahead.type == Token::Type::DOT) {
         statement.statement = parse_assignment(token, tokens);
         break;
@@ -136,6 +142,9 @@ auto Parser::parse_statement(Token& token, Tokens& tokens) -> AST::Statement {
       break;
     case Token::Type::EXIT:
       statement.statement = parse_exit(token, tokens);
+      break;
+    case Token::Type::FUNC:
+      statement.statement = parse_func(token, tokens);
       break;
     case Token::Type::PRINT:
       statement.statement = parse_print(token, tokens);
@@ -413,6 +422,11 @@ auto Parser::parse_primary(Token& token, Tokens& tokens) -> std::unique_ptr<AST:
   }
 
   if (try_match({Token::Type::IDENTIFIER}, token, tokens)) {
+    if (_lookahead.type == Token::Type::OPEN_PAREN) {
+      primary->value = parse_call(token, tokens);
+      return primary;
+    }
+
     primary->value = parse_variable(token, tokens);
     return primary;
   }
@@ -508,16 +522,62 @@ auto Parser::parse_exit(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Ex
   return exit;
 }
 
+auto Parser::parse_func(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Func> {
+  // std::cout << "parse_func\n";
+  auto func = std::make_unique<AST::Func>();
+
+  match({Token::Type::IDENTIFIER}, token, tokens);
+  func->name = token.value;
+
+  match({Token::Type::OPEN_PAREN}, token, tokens);
+
+  while (!try_match({Token::Type::CLOSE_PAREN}, token, tokens)) {
+    match({Token::Type::IDENTIFIER}, token, tokens);
+    func->args.push_back(parse_declaration(token, tokens));
+    if (!try_match({Token::Type::COMMA}, token, tokens)) {
+      match({Token::Type::CLOSE_PAREN}, token, tokens);
+      break;
+    }
+  }
+
+  match({Token::Type::ARROW}, token, tokens);
+  match({Token::Type::IDENTIFIER}, token, tokens);
+  func->returnType = token.value;
+
+  match({Token::Type::OPEN_BRACE}, token, tokens);
+  token = consume(tokens);
+
+  while (token.type != Token::Type::CLOSE_BRACE) {
+    func->body.push_back(parse_statement(token, tokens));
+  }
+
+  return func;
+}
+
 /**
- * @brief Parses a push statement
+ * @brief Parses a function call
  * 
  * @param token token found
  * @param tokens list of tokens
- * @return std::unique_ptr<AST::Push> 
+ * @return std::unique_ptr<AST::Call> 
  */
-auto Parser::parse_push(Token&, Tokens&) -> std::unique_ptr<AST::Push> {
-  // std::cout << "parse_push\n";
-  throw std::runtime_error("Pushes Not implemented");
+auto Parser::parse_call(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Call> {
+  // std::cout << "parse_call\n";
+  auto call = std::make_unique<AST::Call>();
+
+  call->name = token.value;
+
+  match({Token::Type::OPEN_PAREN}, token, tokens);
+
+  while (!try_match({Token::Type::CLOSE_PAREN}, token, tokens)) {
+    call->args.push_back(parse_expression(token, tokens));
+    if (!try_match({Token::Type::COMMA}, token, tokens)) {
+      match({Token::Type::CLOSE_PAREN}, token, tokens);
+      break;
+    }
+  }
+
+  return call;
 }
 
 /**
@@ -553,7 +613,7 @@ auto Parser::parse_declaration(Token& dest, Tokens& tokens) -> std::unique_ptr<A
  * @return std::unique_ptr<AST::Return> 
  */
 auto Parser::parse_return(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Return> {
-  // std::cout << "parse_return\n";
+  std::cout << "parse_return\n";
   auto returnStatement = std::make_unique<AST::Return>();
 
   returnStatement->value = parse_expression(token, tokens);

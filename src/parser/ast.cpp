@@ -27,15 +27,13 @@ auto AST::to_string() const -> std::string {
     belt::overloaded_visit(
         statement.statement,
         [&result](const std::unique_ptr<Assignment>& assignment) { result += assignment->to_string(0); },
-        [&result](const std::unique_ptr<Push>&) {
-          // TODO(rolland): Implement push to string
-          result += "push\n";
-        },
         [&result](const std::unique_ptr<Type>& type) { result += type->to_string(0); },
         [&result](const std::unique_ptr<If>& if_) { result += if_->to_string(0); },
         [&result](const std::unique_ptr<Print>& print) { result += print->value->to_string(0); },
         [&result](const std::unique_ptr<Return>& return_) { result += return_->value->to_string(0); },
         [&result](const std::unique_ptr<Exit>& exit) { result += exit->value->to_string(0); },
+        [&result](const std::unique_ptr<Call>& call) { result += call->to_string(0); },
+        [&result](const std::unique_ptr<Func>& func) { result += func->to_string(0); },
         [&result](const std::unique_ptr<Declaration>& declaration) { result += declaration->to_string(0); },
         [&result](const std::unique_ptr<While>& while_) { result += while_->to_string(0); },
         [&result](std::nullptr_t) { result += "null\n"; });
@@ -106,6 +104,20 @@ auto AST::Expression::to_string(int indent) const -> std::string {
 }
 
 /**
+ * @brief returns the string representation of the call
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
+auto AST::Call::to_string(int indent) const -> std::string {
+  std::string ret = fmt::format("\n{: >{}}Call:", "", indent) + name + "(";
+  for (const auto& arg : args) {
+    ret += arg->to_string(indent + 1) + ", ";
+  }
+  return ret + ")\n";
+}
+
+/**
  * @brief returns the string representation of the declaration
  * 
  * @param indent spaces to indent
@@ -115,14 +127,6 @@ auto AST::Declaration::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Declaration:", "", indent) + name + " as " + type +
          (value ? value->to_string(indent + 1) : "") + '\n';
 }
-
-/**
- * @brief returns the string representation of the push
- * 
- * @param indent spaces to indent
- * @return std::string string representation
- */
-auto AST::Push::to_string(int) const -> std::string { return "push "; }
 
 /**
  * @brief returns the string representation of the return
@@ -183,13 +187,14 @@ auto AST::If::to_string(int indent) const -> std::string {
 auto AST::Statement::to_string(int indent) const -> std::string {
   return belt::overloaded_visit<std::string>(
       statement, [&](const std::unique_ptr<Assignment>& assignment) { return assignment->to_string(indent); },
-      [&](const std::unique_ptr<Push>& push) { return push->to_string(indent); },
       [&](const std::unique_ptr<Type>& type) { return type->to_string(indent); },
       [&](const std::unique_ptr<If>& if_) { return if_->to_string(indent); },
       [&](const std::unique_ptr<Print>& print) { return print->value->to_string(indent); },
-      [&](const std::unique_ptr<Return>& return_) { return return_->value->to_string(indent); },
       [&](const std::unique_ptr<Exit>& exit) { return exit->value->to_string(indent); },
       [&](const std::unique_ptr<Declaration>& declaration) { return declaration->to_string(indent); },
+      [&](const std::unique_ptr<Func>& func) { return func->to_string(indent); },
+      [&](const std::unique_ptr<Call>& call) { return call->to_string(indent); },
+      [&](const std::unique_ptr<Return>& return_) { return return_->value->to_string(indent); },
       [&](const std::unique_ptr<While>& while_) { return while_->to_string(indent); },
       [&](std::nullptr_t) { return std::string("null\n"); });
 }
@@ -280,6 +285,24 @@ auto AST::Variable::to_string(int indent) const -> std::string {
 }
 
 /**
+ * @brief returns the string representation of the function definition
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
+auto AST::Func::to_string(int indent) const -> std::string {
+  std::string ret = fmt::format("\n{: >{}}Func:", "", indent) + name + "(";
+  for (const auto& arg : args) {
+    ret += arg->to_string(indent + 1) + ", ";
+  }
+  ret += "):\n";
+  for (const auto& statement : body) {
+    ret += statement.to_string(indent + 1);
+  }
+  return ret;
+}
+
+/**
  * @brief returns the string representation of the terminal
  * 
  * @param indent spaces to indent
@@ -321,7 +344,9 @@ auto AST::Primary::to_string(int indent) const -> std::string {
       [&](const std::unique_ptr<Terminal>& terminal) {
         return fmt::format("\n{: >{}}Primary:", "", indent) + terminal->to_string(indent + 1);
       },
-
+      [&](const std::unique_ptr<Call>& call) {
+        return fmt::format("\n{: >{}}Primary:", "", indent) + call->to_string(indent + 1);
+      },
       [&](const std::unique_ptr<Variable>& variable) {
         return fmt::format("\n{: >{}}Primary:", "", indent) + variable->to_string(indent + 1);
       },

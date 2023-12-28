@@ -17,9 +17,11 @@
 #include <belt/class_macros.hpp>
 #include <belt/file.hpp>
 
+#include "generator/context_pass.hpp"
 #include "parser/ast.hpp"
 
 #include "context.hpp"
+#include "function.hpp"
 #include "variables.hpp"
 
 #include "x64/addressing.hpp"
@@ -43,9 +45,11 @@ class Generator {
 
  private:
   belt::File          _outputFile;
+  ContextPass         _contextpass;
   std::stack<Context> _contexts;
 
-  std::vector<std::string> _labels;
+  std::map<std::string, Function> _functions;
+  std::vector<std::string>        _labels;
 
   std::map<std::string, std::string> _string_names;
   std::map<std::string, std::string> _string_values;
@@ -53,13 +57,17 @@ class Generator {
   std::string _output_code;
   std::string _output_data;
 
+  size_t _label_count;
+
   void init_context();
   void init_data();
 
-  void enter_context();
+  void enter_context(int64_t);
   void leave_context();
 
   void add_data(const std::string&, const std::string&);
+
+  [[nodiscard]] auto new_label() -> std::string;
 
   void push(x64::Register);
   void push(x64::Address);
@@ -79,6 +87,7 @@ class Generator {
   void emit(x64::Op, x64::Address, x64::Register);
   void emit(x64::Op, x64::Register, const std::string&);
   void emit(x64::Op, x64::Literal);
+  void emit(x64::Op, x64::Literal, x64::Literal);
   void emit(x64::Op, x64::Address, x64::Literal);
   void emit(x64::Op, x64::Register, x64::Literal);
 
@@ -87,7 +96,6 @@ class Generator {
   void generate(const AST::Statement&);
   void generate_assignment(const AST::Assignment&);
   void generate_declaration(const AST::Declaration&);
-  void generate_return(const AST::Return&);
   void generate_exit(const AST::Exit&);
   void generate_print(const AST::Print&);
 
@@ -108,10 +116,13 @@ class Generator {
   void generate_expression(const AST::Variable&);
   void generate_expression(const Token&);
 
-  void generate_string(const AST::String&);
+  void generate_func(const AST::Func&);
 
-  [[nodiscard]] auto get_type_id(const std::string&) -> int;
-  [[nodiscard]] auto get_type(int) -> Type_t&;
+  void generate_call(const AST::Call&);
+  void generate_parameters(const AST::Call&);
+  void generate_return(const AST::Return&);
+
+  void generate_string(const AST::String&);
 
   [[nodiscard]] auto get_location(const AST::Variable&) -> x64::Address;
 

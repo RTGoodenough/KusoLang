@@ -53,7 +53,6 @@ class AST {
 
   struct Declaration;
   struct Return;
-  struct Push;
   struct Print;
   struct Assignment;
 
@@ -66,6 +65,9 @@ class AST {
   struct Primary;
   struct Terminal;
   struct Variable;
+
+  struct Func;
+  struct Call;
 
   struct Type;
   struct Attribute;
@@ -131,17 +133,6 @@ struct AST::Declaration {
  */
 struct AST::Return {
   std::unique_ptr<Expression> value;
-
-  [[nodiscard]] auto to_string(int) const -> std::string;
-};
-
-/**
- * @brief AST node for push statements
- * 
- */
-struct AST::Push {
-  std::unique_ptr<Expression> value;
-  std::unique_ptr<Expression> dest;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
@@ -252,7 +243,7 @@ struct AST::Unary {
  */
 struct AST::Primary {
   std::variant<std::unique_ptr<Variable>, std::unique_ptr<Terminal>, std::unique_ptr<Expression>,
-               std::unique_ptr<String>>
+               std::unique_ptr<String>, std::unique_ptr<Call>>
       value;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
@@ -265,6 +256,22 @@ struct AST::Primary {
 struct AST::Variable {
   std::string                name;
   std::optional<std::string> attribute;
+
+  [[nodiscard]] auto to_string(int) const -> std::string;
+};
+
+struct AST::Func {
+  std::string                               name;
+  std::vector<std::unique_ptr<Declaration>> args;
+  std::string                               returnType;
+  std::vector<Statement>                    body;
+
+  [[nodiscard]] auto to_string(int) const -> std::string;
+};
+
+struct AST::Call {
+  std::string                              name;
+  std::vector<std::unique_ptr<Expression>> args;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
@@ -318,15 +325,14 @@ struct AST::Type {
  */
 struct AST::Statement {
   std::variant<std::unique_ptr<Type>, std::unique_ptr<If>, std::unique_ptr<Exit>, std::unique_ptr<Assignment>,
-               std::unique_ptr<Push>, std::unique_ptr<Declaration>, std::unique_ptr<Return>,
-               std::unique_ptr<Print>, std::unique_ptr<While>, std::nullptr_t>
+               std::unique_ptr<Declaration>, std::unique_ptr<Print>, std::unique_ptr<Func>,
+               std::unique_ptr<Call>, std::unique_ptr<Return>, std::unique_ptr<While>, std::nullptr_t>
       statement;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
 
   explicit Statement(std::nullptr_t) : statement(nullptr) {}
   explicit Statement(std::unique_ptr<Exit> exit) : statement(std::move(exit)) {}
-  explicit Statement(std::unique_ptr<Push> push) : statement(std::move(push)) {}
   explicit Statement(std::unique_ptr<Return> return_) : statement(std::move(return_)) {}
   explicit Statement(std::unique_ptr<Assignment> assignment) : statement(std::move(assignment)) {}
   explicit Statement(std::unique_ptr<Declaration> declaration) : statement(std::move(declaration)) {}

@@ -399,3 +399,12 @@ TEST(Lexer, CaretToken) {
   ASSERT_EQ(tokens[0].type, kuso::Token::Type::CARET);
   ASSERT_EQ(tokens[1].type, kuso::Token::Type::END_OF_FILE);
 }
+
+TEST(Lexer, ArrowToken) {
+  std::string              input("->");
+  kuso::Lexer              lexer;
+  std::vector<kuso::Token> tokens = lexer.tokenize(input);
+  ASSERT_EQ(tokens.size(), 2);
+  ASSERT_EQ(tokens[0].type, kuso::Token::Type::ARROW);
+  ASSERT_EQ(tokens[1].type, kuso::Token::Type::END_OF_FILE);
+}

@@ -131,74 +131,8 @@ enum class Op {
   SETL,
   SETLE,
   SYSCALL,
-  SYSENTER,
-  SYSEXIT,
-  SYSEXITQ,
-  SYSCALLQ,
-  SYSENTERQ,
-  SYSEXITL,
-  SYSCALLL,
-  SYSENTERL,
-  SYSEXITW,
-  SYSCALLW,
-  SYSENTERW,
-  SYSEXITB,
-  SYSCALLB,
-  SYSENTERB,
-  SYSEXITD,
-  SYSCALLD,
-  SYSENTERD,
-  SYSEXITF,
-  SYSCALLF,
-  SYSENTERF,
-  SYSEXITP,
-  SYSCALLP,
-  SYSENTERP,
-  SYSEXITWQ,
-  SYSCALLWQ,
-  SYSENTERWQ,
-  SYSEXITBQ,
-  SYSCALLBQ,
-  SYSENTERBQ,
-  SYSEXITDQ,
-  SYSCALLDQ,
-  SYSENTERDQ,
-  SYSEXITFQ,
-  SYSCALLFQ,
-  SYSENTERFQ,
-  SYSEXITPQ,
-  SYSCALLPQ,
-  SYSENTERPQ,
-  SYSEXITWL,
-  SYSCALLWL,
-  SYSENTERWL,
-  SYSEXITBL,
-  SYSCALLBL,
-  SYSENTERBL,
-  SYSEXITDL,
-  SYSCALLDL,
-  SYSENTERDL,
-  SYSEXITFL,
-  SYSCALLFL,
-  SYSENTERFL,
-  SYSEXITPL,
-  SYSCALLPL,
-  SYSENTERPL,
-  SYSEXITWW,
-  SYSCALLWW,
-  SYSENTERWW,
-  SYSEXITBW,
-  SYSCALLBW,
-  SYSENTERBW,
-  SYSEXITDW,
-  SYSCALLDW,
-  SYSENTERDW,
-  SYSEXITFW,
-  SYSCALLFW,
-  SYSENTERFW,
-  SYSEXITPW,
-  SYSCALLPW,
-  SYSENTERPW
+  ENTER,
+  LEAVE,
 };
 
 struct Literal {
@@ -222,6 +156,39 @@ struct Literal {
       return "qword";
   }
   throw std::runtime_error("Invalid Size");
+}
+
+[[nodiscard]] inline auto parameter_reg(size_t param) -> Register {
+  switch (param) {
+    case 0:
+      return Register::RDI;
+    case 1:
+      return Register::RSI;
+    case 2:
+      return Register::RDX;
+    case 3:
+      return Register::RCX;
+    case 4:
+      return Register::R8;
+    case 5:
+      return Register::R9;
+    default:
+      break;
+  }
+
+  return Register::NONE;
+}
+
+[[nodiscard]] inline auto return_reg(size_t param) -> Register {
+  switch (param) {
+    case 0:
+      return Register::RAX;
+    case 1:
+      return Register::RDX;
+    default:
+      break;
+  }
+  throw std::runtime_error("Invalid Parameter");
 }
 
 [[nodiscard]] inline auto to_string(Register reg) -> std::string {
@@ -440,86 +407,10 @@ struct Literal {
       return "movzx";
     case Op::SYSCALL:
       return "syscall";
-    case Op::SYSENTER:
-      return "sysenter";
-    case Op::SYSEXIT:
-      return "sysexit";
-    case Op::SYSEXITQ:
-      return "sysexitq";
-    case Op::SYSCALLQ:
-      return "syscallq";
-    case Op::SYSENTERQ:
-      return "sysenterq";
-    case Op::SYSEXITL:
-      return "sysexitl";
-    case Op::SYSCALLL:
-      return "syscalll";
-    case Op::SYSENTERL:
-      return "sysenterl";
-    case Op::SYSEXITW:
-      return "sysexitw";
-    case Op::SYSCALLW:
-      return "syscallw";
-    case Op::SYSENTERW:
-    case Op::SYSEXITB:
-    case Op::SYSCALLB:
-    case Op::SYSENTERB:
-    case Op::SYSEXITD:
-    case Op::SYSCALLD:
-    case Op::SYSENTERD:
-    case Op::SYSEXITF:
-    case Op::SYSCALLF:
-    case Op::SYSENTERF:
-    case Op::SYSEXITP:
-    case Op::SYSCALLP:
-    case Op::SYSENTERP:
-    case Op::SYSEXITWQ:
-    case Op::SYSCALLWQ:
-    case Op::SYSENTERWQ:
-    case Op::SYSEXITBQ:
-    case Op::SYSCALLBQ:
-    case Op::SYSENTERBQ:
-    case Op::SYSEXITDQ:
-    case Op::SYSCALLDQ:
-    case Op::SYSENTERDQ:
-    case Op::SYSEXITFQ:
-    case Op::SYSCALLFQ:
-    case Op::SYSENTERFQ:
-    case Op::SYSEXITPQ:
-    case Op::SYSCALLPQ:
-    case Op::SYSENTERPQ:
-    case Op::SYSEXITWL:
-    case Op::SYSCALLWL:
-    case Op::SYSENTERWL:
-    case Op::SYSEXITBL:
-    case Op::SYSCALLBL:
-    case Op::SYSENTERBL:
-    case Op::SYSEXITDL:
-    case Op::SYSCALLDL:
-    case Op::SYSENTERDL:
-    case Op::SYSEXITFL:
-    case Op::SYSCALLFL:
-    case Op::SYSENTERFL:
-    case Op::SYSEXITPL:
-    case Op::SYSCALLPL:
-    case Op::SYSENTERPL:
-    case Op::SYSEXITWW:
-    case Op::SYSCALLWW:
-    case Op::SYSENTERWW:
-    case Op::SYSEXITBW:
-    case Op::SYSCALLBW:
-    case Op::SYSENTERBW:
-    case Op::SYSEXITDW:
-    case Op::SYSCALLDW:
-    case Op::SYSENTERDW:
-    case Op::SYSEXITFW:
-    case Op::SYSCALLFW:
-    case Op::SYSENTERFW:
-    case Op::SYSEXITPW:
-    case Op::SYSCALLPW:
-    case Op::SYSENTERPW:
-      throw std::runtime_error("Unhandled Op");
-      break;
+    case Op::ENTER:
+      return "enter";
+    case Op::LEAVE:
+      return "leave";
   }
   throw std::runtime_error("Invalid Op");
 }

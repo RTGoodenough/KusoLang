@@ -15,9 +15,9 @@
 #include <memory>
 #include <regex>
 #include <stdexcept>
+#include <variant>
 
 #include <belt/overload.hpp>
-#include <variant>
 
 #include "generator/context.hpp"
 #include "lexer/token.hpp"
@@ -35,6 +35,8 @@ namespace kuso {
  * @param ast AST to generate from
  */
 void Generator::generate(const AST& ast) {
+  if (!_contextpass.pass(ast)) return;
+
   emit("global    _start\nsection   .text\n_start:\n");
   for (const auto& statement : ast) {
     generate(statement);
@@ -43,6 +45,7 @@ void Generator::generate(const AST& ast) {
   emit(x64::Op::MOV, x64::Register::RDI, x64::Literal{0});
   emit(x64::Op::MOV, x64::Register::RAX, x64::Literal{lnx::Syscall::EXIT});
   emit(x64::Op::SYSCALL);
+
   _outputFile.write(_output_data);
   _outputFile.write(_output_code);
 }
@@ -62,8 +65,9 @@ void Generator::generate(const AST::Statement& statement) {
       [&](const std::unique_ptr<AST::If>& ifStatement) { generate_if(*ifStatement); },
       [&](const std::unique_ptr<AST::Type>& type) { generate_type(*type); },
       [&](const std::unique_ptr<AST::While>& whileStatement) { generate_while(*whileStatement); },
-      [&](const std::unique_ptr<AST::Push>&) {}, [&](const std::unique_ptr<AST::Return>&) {},
-      [](std::nullptr_t) {});
+      [&](const std::unique_ptr<AST::Func>& func) { generate_func(*func); },
+      [&](const std::unique_ptr<AST::Call>& call) { generate_call(*call); },
+      [&](const std::unique_ptr<AST::Return>& return_) { generate_return(*return_); }, [](std::nullptr_t) {});
 }
 
 /**
@@ -124,6 +128,54 @@ void Generator::generate_assignment(const AST::Assignment& assignment) {
  */
 void Generator::generate_expression(const AST::Expression& expression) {
   generate_expression(*expression.value);
+}
+
+void Generator::generate_func(const AST::Func& func) {
+  auto funcIter = _functions.find(func.name);
+  if (funcIter != _functions.end()) {
+    throw std::runtime_error("Multiple Declarations of " + func.name);
+  }
+
+  _functions[func.name] =
+      Function{.label = fmt::format("func_{}", _functions.size()), .body = std::cref(func)};
+}
+
+void Generator::generate_call(const AST::Call& call) {
+  auto funcIter = _functions.find(call.name);
+  if (funcIter == _functions.end()) {
+    throw std::runtime_error("Unknown Function " + call.name);
+  }
+
+  const auto& func = funcIter->second;
+
+  if (call.args.size() != func.body.get().args.size()) {
+    throw std::runtime_error("Invalid number of arguments for " + call.name);
+  }
+
+  generate_parameters(call);
+
+  emit(x64::Op::CALL, func.label);
+}
+
+void Generator::generate_parameters(const AST::Call& call) {
+  size_t paramIndex = 0;
+  for (const auto& arg : call.args) {
+    generate_expression(*arg);
+    auto reg = x64::parameter_reg(paramIndex);
+    if (reg != x64::Register::NONE) {
+      push(x64::Register::RAX);
+    } else {
+      pop(reg);
+    }
+    ++paramIndex;
+  }
+}
+
+void Generator::generate_return(const AST::Return& ret) {
+  if (ret.value) {
+    generate_expression(*ret.value);
+    pop(x64::Register::RAX);
+  }
 }
 
 /**
@@ -234,6 +286,7 @@ void Generator::generate_expression(const AST::Unary& unary) {
 void Generator::generate_expression(const AST::Primary& primary) {
   belt::overloaded_visit(
       primary.value, [&](const std::unique_ptr<AST::Terminal>& terminal) { generate_expression(*terminal); },
+      [&](const std::unique_ptr<AST::Call>& call) { generate_call(*call); },
       [&](const std::unique_ptr<AST::Expression>& expression) { generate_expression(*expression); },
       [&](const std::unique_ptr<AST::String>& string) { generate_string(*string); },
       [&](const std::unique_ptr<AST::Variable>& variable) { generate_expression(*variable); });
@@ -378,9 +431,8 @@ auto Generator::generate_if(const AST::If& ifNode) -> void {
   pop(x64::Register::RAX);
   emit(x64::Op::CMP, x64::Register::RAX, x64::Literal{0});
 
-  // TODO(rolland): this doesn't work for more than one if statement in the same context
-  auto elseLabel = fmt::format("else_{}", _contexts.size());
-  auto endLabel = fmt::format("end_{}", _contexts.size());
+  auto elseLabel = new_label();
+  auto endLabel = new_label();
 
   if (!ifNode.elseBody.empty()) {
     emit(x64::Op::JE, elseLabel);
@@ -413,8 +465,8 @@ auto Generator::generate_if(const AST::If& ifNode) -> void {
  * @param whileStatement While to generate from
  */
 void Generator::generate_while(const AST::While& whileStatement) {
-  auto startLabel = fmt::format("start_{}", _contexts.size());
-  auto endLabel = fmt::format("end_{}", _contexts.size());
+  auto startLabel = new_label();
+  auto endLabel = new_label();
 
   emit(fmt::format("{}:", startLabel));
   generate_expression(*whileStatement.condition);
@@ -440,14 +492,15 @@ void Generator::generate_while(const AST::While& whileStatement) {
  * @brief Creates a new context
  * 
  */
-void Generator::enter_context() {
+void Generator::enter_context(int64_t size) {
   auto& current = context();
-  _contexts.emplace(Context{.size = 0,
+  _contexts.emplace(Context{.size = size,
                             .stack = current.stack,
                             .variables = current.variables,
                             .currVariable = current.currVariable,
                             .typeIDs = current.typeIDs,
                             .types = current.types});
+  emit(x64::Op::ENTER, x64::Literal{current.stack.disp}, x64::Literal{0});
 }
 
 /**
@@ -455,9 +508,7 @@ void Generator::enter_context() {
  * 
  */
 void Generator::leave_context() {
-  auto& current = context();
-  std::for_each(current.variables.begin(), current.variables.end(), [&](auto&) { pop(x64::Register::RAX); });
-  current.stack.disp += current.size;
+  emit(x64::Op::LEAVE);
   _contexts.pop();
 }
 
@@ -662,6 +713,11 @@ void Generator::emit(x64::Op operation, x64::Literal value) {
   _output_code.append(fmt::format("{} {}\n", x64::to_string(operation), value.to_string()));
 }
 
+void Generator::emit(x64::Op operation, x64::Literal value1, x64::Literal value2) {
+  _output_code.append(
+      fmt::format("{} {}, {}\n", x64::to_string(operation), value1.to_string(), value2.to_string()));
+}
+
 /**
  * @brief Generates an x64 instruction
  * 
@@ -693,6 +749,12 @@ void Generator::emit(x64::Op operation, x64::Size size, x64::Address addr) {
 void Generator::emit(x64::Op operation, x64::Size size, x64::Literal lit) {
   _output_code.append(
       fmt::format("{} {} {}\n", x64::to_string(operation), x64::to_string(size), lit.to_string()));
+}
+
+auto Generator::new_label() -> std::string {
+  auto label = fmt::format("label_{}", _label_count);
+  ++_label_count;
+  return label;
 }
 
 /**
@@ -744,36 +806,6 @@ Generator::Generator(const std::filesystem::path& outputpath)
   }
   init_context();
   init_data();
-}
-
-/**
- * @brief Returns the type with the given typeID
- * 
- * @param typeID ID of the type to get
- * @return Type_t& Type with the given typeID
- */
-auto Generator::get_type(int typeID) -> Type_t& {
-  auto typeIter = context().types.find(typeID);
-  if (typeIter == context().types.end()) {
-    throw std::runtime_error("Unknown Type " + std::to_string(typeID));
-  }
-
-  return typeIter->second;
-}
-
-/**
- * @brief Returns the typeID of the given type
- * 
- * @param type Type to get the ID of
- * @return int ID of the given type
- */
-auto Generator::get_type_id(const std::string& type) -> int {
-  auto typeIter = context().typeIDs.find(type);
-  if (typeIter == context().typeIDs.end()) {
-    throw std::runtime_error("Unknown Type " + type);
-  }
-
-  return typeIter->second;
 }
 
 /**
