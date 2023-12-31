@@ -110,8 +110,7 @@ auto Parser::parse(const std::vector<Token>& tokens) -> std::optional<AST> {
  */
 auto Parser::parse_statement(Token& token, Tokens& tokens) -> AST::Statement {
   // std::cout << "parse_statement\n";
-  AST::Statement                                   statement{nullptr};
-  std::optional<std::unique_ptr<AST::Declaration>> decl;
+  AST::Statement statement{nullptr};
 
   switch (token.type) {
     case Token::Type::IDENTIFIER:
@@ -136,6 +135,9 @@ auto Parser::parse_statement(Token& token, Tokens& tokens) -> AST::Statement {
       break;
     case Token::Type::TYPE:
       statement.statement = parse_type(token, tokens);
+      break;
+    case Token::Type::MAIN:
+      statement.statement = parse_main(token, tokens);
       break;
     case Token::Type::RETURN:
       statement.statement = parse_return(token, tokens);
@@ -522,6 +524,20 @@ auto Parser::parse_exit(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Ex
   return exit;
 }
 
+auto Parser::parse_main(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Main> {
+  // std::cout << "parse_main\n";
+  auto main = std::make_unique<AST::Main>();
+
+  match({Token::Type::OPEN_BRACE}, token, tokens);
+  token = consume(tokens);
+
+  while (token.type != Token::Type::CLOSE_BRACE) {
+    main->body.push_back(parse_statement(token, tokens));
+  }
+
+  return main;
+}
+
 auto Parser::parse_func(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Func> {
   // std::cout << "parse_func\n";
   auto func = std::make_unique<AST::Func>();
@@ -613,7 +629,7 @@ auto Parser::parse_declaration(Token& dest, Tokens& tokens) -> std::unique_ptr<A
  * @return std::unique_ptr<AST::Return> 
  */
 auto Parser::parse_return(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Return> {
-  std::cout << "parse_return\n";
+  // std::cout << "parse_return\n";
   auto returnStatement = std::make_unique<AST::Return>();
 
   returnStatement->value = parse_expression(token, tokens);

@@ -142,6 +142,71 @@ TEST(Lexer, SingleLineCommentWithNewLineAndCode) {
   ASSERT_EQ(tokens[6].type, kuso::Token::Type::END_OF_FILE);
 }
 
+TEST(Lexer, ExpressionWithSlash) {
+  std::string              input("x = 5 / 3;");
+  kuso::Lexer              lexer;
+  std::vector<kuso::Token> tokens = lexer.tokenize(input);
+  ASSERT_EQ(tokens.size(), 7);
+  ASSERT_EQ(tokens[0].type, kuso::Token::Type::IDENTIFIER);
+  ASSERT_EQ(tokens[0].value, "x");
+  ASSERT_EQ(tokens[1].type, kuso::Token::Type::EQUAL);
+  ASSERT_EQ(tokens[2].type, kuso::Token::Type::NUMBER);
+  ASSERT_EQ(tokens[2].value, "5");
+  ASSERT_EQ(tokens[3].type, kuso::Token::Type::SLASH);
+  ASSERT_EQ(tokens[4].type, kuso::Token::Type::NUMBER);
+  ASSERT_EQ(tokens[4].value, "3");
+  ASSERT_EQ(tokens[5].type, kuso::Token::Type::SEMI_COLON);
+  ASSERT_EQ(tokens[6].type, kuso::Token::Type::END_OF_FILE);
+}
+
+TEST(Lexer, EmptyCommentAtEnd) {
+  std::string              input("// This is a comment\n//");
+  kuso::Lexer              lexer;
+  std::vector<kuso::Token> tokens = lexer.tokenize(input);
+  ASSERT_EQ(tokens.size(), 1);
+  ASSERT_EQ(tokens[0].type, kuso::Token::Type::END_OF_FILE);
+}
+
+TEST(Lexer, WhiteSpaceAtEnd) {
+  std::string              input("x = 5 + 3 * 2;   ");
+  kuso::Lexer              lexer;
+  std::vector<kuso::Token> tokens = lexer.tokenize(input);
+  ASSERT_EQ(tokens.size(), 9);
+  ASSERT_EQ(tokens[0].type, kuso::Token::Type::IDENTIFIER);
+  ASSERT_EQ(tokens[0].value, "x");
+  ASSERT_EQ(tokens[1].type, kuso::Token::Type::EQUAL);
+  ASSERT_EQ(tokens[2].type, kuso::Token::Type::NUMBER);
+  ASSERT_EQ(tokens[2].value, "5");
+  ASSERT_EQ(tokens[3].type, kuso::Token::Type::PLUS);
+  ASSERT_EQ(tokens[4].type, kuso::Token::Type::NUMBER);
+  ASSERT_EQ(tokens[4].value, "3");
+  ASSERT_EQ(tokens[5].type, kuso::Token::Type::ASTERISK);
+  ASSERT_EQ(tokens[6].type, kuso::Token::Type::NUMBER);
+  ASSERT_EQ(tokens[6].value, "2");
+  ASSERT_EQ(tokens[7].type, kuso::Token::Type::SEMI_COLON);
+  ASSERT_EQ(tokens[8].type, kuso::Token::Type::END_OF_FILE);
+}
+
+TEST(Lexer, NewLineAtEnd) {
+  std::string              input("x = 5 + 3 * 2;\n");
+  kuso::Lexer              lexer;
+  std::vector<kuso::Token> tokens = lexer.tokenize(input);
+  ASSERT_EQ(tokens.size(), 9);
+  ASSERT_EQ(tokens[0].type, kuso::Token::Type::IDENTIFIER);
+  ASSERT_EQ(tokens[0].value, "x");
+  ASSERT_EQ(tokens[1].type, kuso::Token::Type::EQUAL);
+  ASSERT_EQ(tokens[2].type, kuso::Token::Type::NUMBER);
+  ASSERT_EQ(tokens[2].value, "5");
+  ASSERT_EQ(tokens[3].type, kuso::Token::Type::PLUS);
+  ASSERT_EQ(tokens[4].type, kuso::Token::Type::NUMBER);
+  ASSERT_EQ(tokens[4].value, "3");
+  ASSERT_EQ(tokens[5].type, kuso::Token::Type::ASTERISK);
+  ASSERT_EQ(tokens[6].type, kuso::Token::Type::NUMBER);
+  ASSERT_EQ(tokens[6].value, "2");
+  ASSERT_EQ(tokens[7].type, kuso::Token::Type::SEMI_COLON);
+  ASSERT_EQ(tokens[8].type, kuso::Token::Type::END_OF_FILE);
+}
+
 TEST(Lexer, MultiLineCommentWithNewLineAndCode) {
   std::string              input("/* This is a comment\nThis is the second line */\na : int = 0;");
   kuso::Lexer              lexer;

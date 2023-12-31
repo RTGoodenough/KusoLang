@@ -11,6 +11,7 @@
 
 #include "generator/generator.hpp"
 
+#include <cstdio>
 #include <iostream>
 #include <memory>
 #include <regex>
@@ -22,6 +23,7 @@
 #include "generator/context.hpp"
 #include "lexer/token.hpp"
 #include "linux/linux.hpp"
+#include "logging/logging.hpp"
 #include "parser/ast.hpp"
 #include "x64/addressing.hpp"
 #include "x64/x64.hpp"
@@ -35,19 +37,19 @@ namespace kuso {
  * @param ast AST to generate from
  */
 void Generator::generate(const AST& ast) {
-  if (!_contextpass.pass(ast)) return;
+  try {
+    if (!_firstpass.types_pass(ast)) return;
+    if (!_firstpass.function_pass(ast)) return;
 
-  emit("global    _start\nsection   .text\n_start:\n");
-  for (const auto& statement : ast) {
-    generate(statement);
+    emit("global _start\nsection .text\n");
+    for (const auto& statement : ast) {
+      generate(statement);
+    }
+
+    _outputFile.write(_output_code);
+  } catch (std::exception& e) {
+    Logging::error(e.what());
   }
-
-  emit(x64::Op::MOV, x64::Register::RDI, x64::Literal{0});
-  emit(x64::Op::MOV, x64::Register::RAX, x64::Literal{lnx::Syscall::EXIT});
-  emit(x64::Op::SYSCALL);
-
-  _outputFile.write(_output_data);
-  _outputFile.write(_output_code);
 }
 
 /**
@@ -63,7 +65,8 @@ void Generator::generate(const AST::Statement& statement) {
       [&](const std::unique_ptr<AST::Exit>& exit) { generate_exit(*exit); },
       [&](const std::unique_ptr<AST::Print>& print) { generate_print(*print); },
       [&](const std::unique_ptr<AST::If>& ifStatement) { generate_if(*ifStatement); },
-      [&](const std::unique_ptr<AST::Type>& type) { generate_type(*type); },
+      [&](const std::unique_ptr<AST::Main>& main) { generate_main(*main); },
+      [&](const std::unique_ptr<AST::Type>&) {},
       [&](const std::unique_ptr<AST::While>& whileStatement) { generate_while(*whileStatement); },
       [&](const std::unique_ptr<AST::Func>& func) { generate_func(*func); },
       [&](const std::unique_ptr<AST::Call>& call) { generate_call(*call); },
@@ -76,30 +79,27 @@ void Generator::generate(const AST::Statement& statement) {
  * @param declaration Declaration to generate from
  */
 void Generator::generate_declaration(const AST::Declaration& declaration) {
-  auto&       current = context();
-  const auto& name = get_identifier(declaration);
-  auto        typeID = get_type_id(get_decl_type(declaration));
+  auto& current = context();
 
-  if (current.variables.find(name) != current.variables.end()) {
-    throw std::runtime_error("Multiple Declarations of " + name);
+  auto typeID = _firstpass.get_type_id(declaration.type);
+  if (!typeID.has_value()) {
+    throw std::runtime_error("Unknown Type " + declaration.type);
   }
 
-  auto& type = get_type(typeID);
+  auto type = _firstpass.get_type(typeID.value());
+  if (!type.has_value()) {
+    throw std::runtime_error("Unknown Type " + declaration.type);
+  }
+  const auto& typeRef = type.value().get();
 
+  const auto& func = get_check_func_info(_currentFunction.top());
   if (declaration.value) {
-    if (type.offsets) throw std::runtime_error("Cannot assign value to type with attributes");
+    if (typeRef.offsets) throw std::runtime_error("Cannot assign value to type with attributes");
     generate_expression(*declaration.value);
-  } else {
-    if (type.offsets) {
-      std::for_each(type.offsets.value().begin(), type.offsets.value().end(),
-                    [&](auto&) { push(x64::Literal{0}); });
-    } else {
-      push(x64::Literal{0});
-    }
+    emit(x64::Op::MOV, func.locals.at(declaration.name).location, x64::Register::RAX);
   }
 
-  current.variables[name] =
-      Variable{typeID, {x64::Address::Mode::INDIRECT_DISPLACEMENT, x64::Register::RSP, 0}};
+  current.variables[declaration.name] = Variable{typeID.value(), func.locals.at(declaration.name).location};
 }
 
 /**
@@ -117,8 +117,76 @@ void Generator::generate_assignment(const AST::Assignment& assignment) {
   }
 
   generate_expression(*assignment.value);
-  pop(x64::Register::RAX);
   emit(x64::Op::MOV, get_location(*assignment.dest), x64::Register::RAX);
+}
+
+void Generator::generate_main(const AST::Main& main) {
+  _currentFunction.emplace("main");
+
+  emit("_start:");
+  enter_context("main");
+  for (const auto& statement : main.body) {
+    generate(statement);
+  }
+}
+
+void Generator::generate_func(const AST::Func& func) {
+  auto funcIter = _functions.find(func.name);
+  if (funcIter != _functions.end()) {
+    throw std::runtime_error("Multiple Declarations of " + func.name);
+  }
+
+  _functions.emplace(func.name, Function{.label = fmt::format(".func_{}", _functions.size()),
+                                         .body = std::cref(func),
+                                         .argCnt = func.args.size()});
+
+  const auto& label = _functions.at(func.name).label;
+  emit(fmt::format("{}:", label));
+  _currentFunction.push(func.name);
+  enter_context(func.name);
+
+  for (const auto& statement : func.body) {
+    generate(statement);
+  }
+
+  _currentFunction.pop();
+}
+
+void Generator::generate_call(const AST::Call& call) {
+  auto funcIter = _functions.find(call.name);
+  if (funcIter == _functions.end()) {
+    throw std::runtime_error("Unknown Function " + call.name);
+  }
+  const auto& func = funcIter->second;
+
+  if (call.args.size() != func.argCnt) {
+    throw std::runtime_error("Invalid number of arguments for " + call.name);
+  }
+
+  generate_parameters(call);
+  emit(x64::Op::CALL, func.label);
+}
+
+void Generator::generate_parameters(const AST::Call& call) {
+  size_t paramIndex = 0;
+  for (const auto& arg : call.args) {
+    generate_expression(*arg);
+    auto reg = x64::parameter_reg(paramIndex);
+    if (reg == x64::Register::NONE) {
+      push(x64::Register::RAX);
+    } else {
+      emit(x64::Op::MOV, reg, x64::Register::RAX);
+    }
+    ++paramIndex;
+  }
+}
+
+void Generator::generate_return(const AST::Return& ret) {
+  if (ret.value) {
+    generate_expression(*ret.value);
+  }
+  leave_context();
+  emit(x64::Op::RET);
 }
 
 /**
@@ -128,54 +196,7 @@ void Generator::generate_assignment(const AST::Assignment& assignment) {
  */
 void Generator::generate_expression(const AST::Expression& expression) {
   generate_expression(*expression.value);
-}
-
-void Generator::generate_func(const AST::Func& func) {
-  auto funcIter = _functions.find(func.name);
-  if (funcIter != _functions.end()) {
-    throw std::runtime_error("Multiple Declarations of " + func.name);
-  }
-
-  _functions[func.name] =
-      Function{.label = fmt::format("func_{}", _functions.size()), .body = std::cref(func)};
-}
-
-void Generator::generate_call(const AST::Call& call) {
-  auto funcIter = _functions.find(call.name);
-  if (funcIter == _functions.end()) {
-    throw std::runtime_error("Unknown Function " + call.name);
-  }
-
-  const auto& func = funcIter->second;
-
-  if (call.args.size() != func.body.get().args.size()) {
-    throw std::runtime_error("Invalid number of arguments for " + call.name);
-  }
-
-  generate_parameters(call);
-
-  emit(x64::Op::CALL, func.label);
-}
-
-void Generator::generate_parameters(const AST::Call& call) {
-  size_t paramIndex = 0;
-  for (const auto& arg : call.args) {
-    generate_expression(*arg);
-    auto reg = x64::parameter_reg(paramIndex);
-    if (reg != x64::Register::NONE) {
-      push(x64::Register::RAX);
-    } else {
-      pop(reg);
-    }
-    ++paramIndex;
-  }
-}
-
-void Generator::generate_return(const AST::Return& ret) {
-  if (ret.value) {
-    generate_expression(*ret.value);
-    pop(x64::Register::RAX);
-  }
+  if (!_exprInReg) pop(x64::Register::RAX);
 }
 
 /**
@@ -186,15 +207,16 @@ void Generator::generate_return(const AST::Return& ret) {
 void Generator::generate_expression(const AST::Equality& equality) {
   if (equality.right) {
     generate_expression(*equality.right);
+    if (_exprInReg) push(x64::Register::RAX);
   }
   generate_expression(*equality.left);
 
   if (equality.right) {
-    pop(x64::Register::RAX);
+    if (!_exprInReg) pop(x64::Register::RAX);
     pop(x64::Register::RDX);
     emit(x64::Op::CMP, x64::Register::RAX, x64::Register::RDX);
     pull_comparison_result(equality.equal ? AST::BinaryOp::EQ : AST::BinaryOp::NEQ);
-    push(x64::Register::RAX);
+    _exprInReg = true;
   }
 }
 
@@ -206,15 +228,16 @@ void Generator::generate_expression(const AST::Equality& equality) {
 void Generator::generate_expression(const AST::Comparison& comparison) {
   if (comparison.right) {
     generate_expression(*comparison.right);
+    if (_exprInReg) push(x64::Register::RAX);
   }
   generate_expression(*comparison.left);
 
   if (comparison.right) {
-    pop(x64::Register::RAX);
+    if (!_exprInReg) pop(x64::Register::RAX);
     pop(x64::Register::RDX);
     emit(x64::Op::CMP, x64::Register::RAX, x64::Register::RDX);
     pull_comparison_result(comparison.op);
-    push(x64::Register::RAX);
+    _exprInReg = true;
   }
 }
 
@@ -226,17 +249,18 @@ void Generator::generate_expression(const AST::Comparison& comparison) {
 void Generator::generate_expression(const AST::Term& term) {
   if (term.right) {
     generate_expression(*term.right);
+    if (_exprInReg) push(x64::Register::RAX);
   }
   generate_expression(*term.left);
 
   if (term.right) {
-    pop(x64::Register::RAX);
+    if (!_exprInReg) pop(x64::Register::RAX);
     pop(x64::Register::RDX);
     if (term.op == AST::BinaryOp::ADD)
       emit(x64::Op::ADD, x64::Register::RAX, x64::Register::RDX);
     else if (term.op == AST::BinaryOp::SUB)
       emit(x64::Op::SUB, x64::Register::RAX, x64::Register::RDX);
-    push(x64::Register::RAX);
+    _exprInReg = true;
   }
 }
 
@@ -248,17 +272,21 @@ void Generator::generate_expression(const AST::Term& term) {
 void Generator::generate_expression(const AST::Factor& factor) {
   if (factor.right) {
     generate_expression(*factor.right);
+    if (_exprInReg) push(x64::Register::RAX);
   }
   generate_expression(*factor.left);
 
   if (factor.right) {
-    pop(x64::Register::RAX);
-    pop(x64::Register::RDX);
-    if (factor.op == AST::BinaryOp::MUL)
+    if (!_exprInReg) pop(x64::Register::RAX);
+    if (factor.op == AST::BinaryOp::MUL) {
+      pop(x64::Register::RDX);
       emit(x64::Op::IMUL, x64::Register::RAX, x64::Register::RDX);
-    else if (factor.op == AST::BinaryOp::DIV)
-      emit(x64::Op::DIV, x64::Register::RAX, x64::Register::RDX);
-    push(x64::Register::RAX);
+    } else if (factor.op == AST::BinaryOp::DIV) {
+      emit(x64::Op::XOR, x64::Register::RDX, x64::Register::RDX);
+      pop(x64::Register::RCX);
+      emit(x64::Op::IDIV, x64::Register::RCX);
+    }
+    _exprInReg = true;
   }
 }
 
@@ -272,9 +300,9 @@ void Generator::generate_expression(const AST::Unary& unary) {
       unary.value, [&](const std::unique_ptr<AST::Primary>& primary) { generate_expression(*primary); },
       [&](const std::unique_ptr<AST::Unary>& unary) { generate_expression(*unary); }, [](std::nullptr_t) {});
   if (unary.op == AST::BinaryOp::SUB || unary.op == AST::BinaryOp::NOT) {
-    pop(x64::Register::RAX);
+    if (!_exprInReg) pop(x64::Register::RAX);
     emit(x64::Op::NEG, x64::Register::RAX);
-    push(x64::Register::RAX);
+    _exprInReg = true;
   }
 }
 
@@ -310,11 +338,14 @@ void Generator::generate_expression(const AST::Terminal& terminal) {
  * @param variable Variable to generate from
  */
 void Generator::generate_expression(const AST::Variable& variable) {
-  auto variableIter = context().variables.find(variable.name);
-  if (variableIter == context().variables.end()) {
+  auto& current = context();
+
+  auto variableIter = current.variables.find(variable.name);
+  if (variableIter == current.variables.end()) {
     throw std::runtime_error("Unknown Variable " + variable.name);
   }
-  push(get_location(variable));
+  emit(x64::Op::MOV, x64::Register::RAX, variableIter->second.location);
+  _exprInReg = true;
 }
 
 /**
@@ -324,7 +355,8 @@ void Generator::generate_expression(const AST::Variable& variable) {
  */
 void Generator::generate_expression(const Token& token) {
   if (token.type == Token::Type::NUMBER) {
-    push(x64::Literal{std::stoi(token.value)});
+    emit(x64::Op::MOV, x64::Register::RAX, x64::Literal{std::stoi(token.value)});
+    _exprInReg = true;
   } else {
     throw std::runtime_error("Invalid Terminal");
   }
@@ -338,7 +370,6 @@ void Generator::generate_expression(const Token& token) {
 void Generator::generate_exit(const AST::Exit& exit) {
   if (exit.value) {
     generate_expression(*exit.value);
-    pop(x64::Register::RAX);
   } else {
     emit(x64::Op::MOV, x64::Register::RAX, x64::Literal{0});
   }
@@ -354,7 +385,6 @@ void Generator::generate_exit(const AST::Exit& exit) {
  */
 void Generator::generate_print(const AST::Print& print) {
   generate_expression(*print.value);
-  pop(x64::Register::RAX);
   emit(x64::Op::MOV, x64::Register::RSI, x64::Register::RAX);
   emit(x64::Op::MOV, x64::Register::RAX, x64::Literal{lnx::Syscall::WRITE});
   emit(x64::Op::MOV, x64::Register::RDI, x64::Literal{1});
@@ -362,64 +392,12 @@ void Generator::generate_print(const AST::Print& print) {
 }
 
 /**
- * @brief Adds a new type to the current context
- * 
- * @param type Type to create
- */
-void Generator::generate_type(const AST::Type& type) {
-  auto& current = context();
-
-  auto typeIter = current.typeIDs.find(type.name);
-  if (typeIter != current.typeIDs.end()) {
-    throw std::runtime_error("Multiple Declarations of " + type.name);
-  }
-
-  auto typeID = current.currVariable;
-  ++current.currVariable;
-
-  Type_t newType;
-
-  if (!type.attributes.empty()) {
-    newType.offsets = std::map<std::string, int>{};
-    int currOffset = 0;
-
-    for (const auto& attribute : type.attributes) {
-      auto& refType = get_type(get_type_id(attribute.type));
-      newType.offsets.value()[attribute.name] = currOffset;
-      currOffset += refType.size;
-      newType.size += refType.size;
-    }
-  } else {
-    newType.size = x64::Size::QWORD;
-  }
-
-  current.types[typeID] = newType;
-  current.typeIDs[type.name] = typeID;
-}
-
-/**
  * @brief Generates x64 assembly from a string
  * 
  * @param string String to generate from
  */
-void Generator::generate_string(const AST::String& string) {
-  auto replacedStr = std::regex_replace(string.value, std::regex{"\\\\n"}, "\", 10, \"");
-  if (replacedStr.length() >= 2 && replacedStr.substr(replacedStr.length() - 2) == "\"\"") {
-    replacedStr = replacedStr.substr(0, replacedStr.length() - 2);
-  }
-
-  auto iter = _string_names.find(replacedStr);
-  if (iter == _string_names.end()) {
-    auto name = fmt::format("str_{}", _string_names.size());
-    _string_names[replacedStr] = name;
-    _string_values[name] = replacedStr;
-    add_data(name, replacedStr);
-  }
-
-  // TODO(rolland): should we be using rdx?
-  emit(x64::Op::MOV, x64::Register::RAX, _string_names[replacedStr]);
-  emit(x64::Op::MOV, x64::Register::RDX, x64::Literal{static_cast<int>(replacedStr.length())});
-}
+//NOLINTNEXTLINE
+void Generator::generate_string(const AST::String&) { throw std::runtime_error("Strings Not Implemented"); }
 
 /**
  * @brief Generates x64 assembly from an if statement
@@ -428,7 +406,6 @@ void Generator::generate_string(const AST::String& string) {
  */
 auto Generator::generate_if(const AST::If& ifNode) -> void {
   generate_expression(*ifNode.condition);
-  pop(x64::Register::RAX);
   emit(x64::Op::CMP, x64::Register::RAX, x64::Literal{0});
 
   auto elseLabel = new_label();
@@ -470,7 +447,6 @@ void Generator::generate_while(const AST::While& whileStatement) {
 
   emit(fmt::format("{}:", startLabel));
   generate_expression(*whileStatement.condition);
-  pop(x64::Register::RAX);
   emit(x64::Op::CMP, x64::Register::RAX, x64::Literal{0});
   emit(x64::Op::JE, endLabel);
 
@@ -488,19 +464,74 @@ void Generator::generate_while(const AST::While& whileStatement) {
 // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% HELPERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+auto Generator::get_check_type(const std::string& typeName) -> Type& {
+  auto type = _firstpass.get_type(typeName);
+  if (!type.has_value()) {
+    throw std::runtime_error("Unknown Type " + typeName);
+  }
+
+  return type.value().get();
+}
+
+auto Generator::get_check_type(TypeID typeId) -> Type& {
+  auto type = _firstpass.get_type(typeId);
+  if (!type.has_value()) {
+    throw std::runtime_error("Unknown Type");
+  }
+
+  return type.value().get();
+}
+
+auto Generator::get_check_func_info(const std::string& funcname) -> const FirstPass::FuncInfo& {
+  auto func = _firstpass.get_function(funcname);
+  if (!func.has_value()) {
+    throw std::runtime_error("Unknown Function " + funcname);
+  }
+
+  return func.value().get();
+}
+
 /**
  * @brief Creates a new context
  * 
  */
 void Generator::enter_context(int64_t size) {
   auto& current = context();
-  _contexts.emplace(Context{.size = size,
-                            .stack = current.stack,
-                            .variables = current.variables,
-                            .currVariable = current.currVariable,
-                            .typeIDs = current.typeIDs,
-                            .types = current.types});
-  emit(x64::Op::ENTER, x64::Literal{current.stack.disp}, x64::Literal{0});
+  current = _contexts.emplace(Context{.size = 0,
+                                      .stack = current.stack,
+                                      .variables = current.variables,
+                                      .currVariable = current.currVariable});
+
+  for (int64_t i = 0; i < size / x64::Size::QWORD; ++i) {
+    push(x64::Literal{0});
+  }
+}
+
+void Generator::enter_context(const std::string& funcname) {
+  const auto& func = get_check_func_info(funcname);
+  auto&       current = _contexts.emplace(
+            Context{.size = 0,
+                    .stack = x64::Address{x64::Address::Mode::INDIRECT_DISPLACEMENT, x64::Register::RSP, 0},
+                    .variables = {},
+                    .currVariable = 0});
+
+  for (const auto& arg : func.params) {
+    if (arg.second.location.reg != x64::Register::RSP) {
+      if (func.dirtyRegs.at(static_cast<size_t>(arg.second.location.reg))) {
+        push(arg.second.location.reg);
+        current.variables[arg.first] = arg.second;
+        current.variables[arg.first].location = current.stack;
+      } else {
+        current.variables[arg.first].location = arg.second.location;
+      }
+    }
+  }
+
+  for (const auto& arg : func.locals) {
+    push(x64::Literal{0});
+    current.variables[arg.first] = arg.second;
+    current.variables[arg.first].location = current.stack;
+  }
 }
 
 /**
@@ -508,7 +539,11 @@ void Generator::enter_context(int64_t size) {
  * 
  */
 void Generator::leave_context() {
-  emit(x64::Op::LEAVE);
+  std::for_each(context().variables.begin(), context().variables.end(), [&](const auto& var) {
+    if (var.second.location.reg == x64::Register::RSP) {
+      pop(x64::Register::RDI);
+    }
+  });
   _contexts.pop();
 }
 
@@ -520,7 +555,7 @@ void Generator::leave_context() {
 void Generator::push(x64::Address addr) {
   auto& current = context();
   emit(x64::Op::PUSH, x64::Size::QWORD, addr);
-  current.stack.disp -= x64::Size::QWORD;
+  current.stack.disp += x64::Size::QWORD;
   current.size += x64::Size::QWORD;
   for (auto& variable : current.variables) {
     variable.second.location.disp += x64::Size::QWORD;
@@ -535,8 +570,6 @@ void Generator::push(x64::Address addr) {
 void Generator::push(x64::Literal lit) {
   auto& current = context();
   emit(x64::Op::PUSH, x64::Size::QWORD, lit);
-  current.stack.disp -= x64::Size::QWORD;
-  current.size += x64::Size::QWORD;
   for (auto& variable : current.variables) {
     variable.second.location.disp += x64::Size::QWORD;
   }
@@ -550,8 +583,6 @@ void Generator::push(x64::Literal lit) {
 void Generator::push(x64::Register reg) {
   auto& current = context();
   emit(x64::Op::PUSH, x64::Size::QWORD, reg);
-  current.stack.disp -= x64::Size::QWORD;
-  current.size += x64::Size::QWORD;
   for (auto& variable : current.variables) {
     variable.second.location.disp += x64::Size::QWORD;
   }
@@ -565,8 +596,6 @@ void Generator::push(x64::Register reg) {
 void Generator::pop(x64::Register reg) {
   auto& current = context();
   emit(x64::Op::POP, x64::Size::QWORD, reg);
-  current.stack.disp += x64::Size::QWORD;
-  current.size -= x64::Size::QWORD;
   for (auto& variable : current.variables) {
     variable.second.location.disp -= x64::Size::QWORD;
   }
@@ -788,24 +817,12 @@ void Generator::pull_comparison_result(AST::BinaryOp operation) {
   emit(x64::Op::MOVZX, x64::Register::RAX, x64::Register::AL);
 }
 
-/**
- * @brief Adds a new data entry to the output data
- * 
- * @param name name of the data
- * @param value value of the data
- */
-void Generator::add_data(const std::string& name, const std::string& value) {
-  _output_data.append(fmt::format("{}: db {}\n", name, value));
-  _output_data.append(fmt::format("{}_len: equ {}\n", name, value.length()));
-}
-
 Generator::Generator(const std::filesystem::path& outputpath)
     : _outputFile(outputpath, std::ios_base::out | std::ios_base::trunc) {
   if (!_outputFile.is_open()) {
     throw std::runtime_error("Failed to open output file");
   }
   init_context();
-  init_data();
 }
 
 /**
@@ -832,7 +849,7 @@ auto Generator::get_location(const AST::Variable& variable) -> x64::Address {
 
   int offset = 0;
   if (variable.attribute) {
-    auto& type = get_type(variableIter->second.type);
+    const auto& type = get_check_type(variableIter->second.type);
     offset = type.get_offset(variable.attribute.value());
   }
 
@@ -878,18 +895,10 @@ auto Generator::get_decl_type(const AST::Declaration& declaration) -> const std:
  * 
  */
 void Generator::init_context() {
-  _contexts.emplace(Context{
-      .size = 0,
-      .stack = x64::Address{x64::Address::Mode::DIRECT, x64::Register::RSP, 0},
-      .variables = {},
-      .currVariable = 2,
-      .typeIDs = {{"int", 0}, {"str", 1}},
-      .types = {{0, Type_t{x64::Size::QWORD, std::nullopt}}, {1, Type_t{x64::Size::QWORD, std::nullopt}}}});
+  _contexts.emplace(
+      Context{.size = 0,
+              .stack = x64::Address{x64::Address::Mode::INDIRECT_DISPLACEMENT, x64::Register::RSP, 0},
+              .variables = {},
+              .currVariable = 0});
 }
-
-/**
- * @brief Initializes the starting data
- * 
- */
-void Generator::init_data() { _output_data = "section   .data\n"; }
 }  // namespace kuso

@@ -34,6 +34,7 @@ auto AST::to_string() const -> std::string {
         [&result](const std::unique_ptr<Exit>& exit) { result += exit->value->to_string(0); },
         [&result](const std::unique_ptr<Call>& call) { result += call->to_string(0); },
         [&result](const std::unique_ptr<Func>& func) { result += func->to_string(0); },
+        [&result](const std::unique_ptr<Main>& main) { result += main->to_string(0); },
         [&result](const std::unique_ptr<Declaration>& declaration) { result += declaration->to_string(0); },
         [&result](const std::unique_ptr<While>& while_) { result += while_->to_string(0); },
         [&result](std::nullptr_t) { result += "null\n"; });
@@ -195,6 +196,7 @@ auto AST::Statement::to_string(int indent) const -> std::string {
       [&](const std::unique_ptr<Func>& func) { return func->to_string(indent); },
       [&](const std::unique_ptr<Call>& call) { return call->to_string(indent); },
       [&](const std::unique_ptr<Return>& return_) { return return_->value->to_string(indent); },
+      [&](const std::unique_ptr<Main>& main) { return main->to_string(indent); },
       [&](const std::unique_ptr<While>& while_) { return while_->to_string(indent); },
       [&](std::nullptr_t) { return std::string("null\n"); });
 }
@@ -282,6 +284,20 @@ auto AST::Unary::to_string(int indent) const -> std::string {
  */
 auto AST::Variable::to_string(int indent) const -> std::string {
   return fmt::format("\n{: >{}}Variable:", "", indent) + name + (attribute ? "." + attribute.value() : "");
+}
+
+/**
+ * @brief returns the string representation of the entry point
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
+auto AST::Main::to_string(int indent) const -> std::string {
+  std::string ret = fmt::format("\n{: >{}}Main:", "", indent);
+  for (const auto& statement : body) {
+    ret += statement.to_string(indent + 1);
+  }
+  return ret;
 }
 
 /**

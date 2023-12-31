@@ -13,8 +13,8 @@ class ContextPass {
     explicit ContextError(const std::string& what) : std::runtime_error(what) {}
   };
 
-  [[nodiscard]] auto get_type_id(const std::string&) -> int;
-  [[nodiscard]] auto get_type(int) -> Type_t&;
+  [[nodiscard]] auto get_context(const std::string&) const -> const Context&;
+  [[nodiscard]] auto get_context(const std::string&) -> Context&;
 
  private:
   std::string                    _current;

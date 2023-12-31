@@ -78,14 +78,22 @@ auto Lexer::parse_token() noexcept -> Token {
     return Token(Token::Type::END_OF_FILE, _line, _col);
   }
 
-  while (std::iswspace(*_iter)) {
-    next();
-  }
-  while (*_iter == '/') {
-    skip_comments();
-  }
-  while (std::iswspace(*_iter)) {
-    next();
+  while (*_iter == '/' || std::iswspace(*_iter)) {
+    if (std::iswspace(*_iter)) {
+      next();
+      continue;
+    }
+    if (_iter + 1 < _source.end()) {
+      if (*(_iter + 1) == '/') {
+        skip_comments(false);
+      } else if (*(_iter + 1) == '*') {
+        skip_comments(true);
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
   }
 
   if (_iter >= _source.end()) {
@@ -243,24 +251,22 @@ auto Lexer::parse_token() noexcept -> Token {
  * 
  * @return char last character after the comment
  */
-void Lexer::skip_comments() {
+void Lexer::skip_comments(bool multiline) {
   // std::cout << "skip_comments\n";
-  next();
-  if (*_iter == '/') {
-    while (*_iter != '\n' && (_iter < _source.end())) {
+  if (multiline) {
+    while (_iter < _source.end() - 1) {
       next();
-    }
-  } else if (*_iter == '*') {
-    while ((_iter < _source.end())) {
-      next();
-      if (*_iter == '*') {
+      if (*_iter == '*' && *(_iter + 1) == '/') {
         next();
-        if (*_iter == '/') {
-          next();
-          return;
-        }
+        next();
+        return;
       }
     }
+    return;
+  }
+
+  while (_iter < _source.end() && *_iter != '\n') {
+    next();
   }
 }
 
@@ -428,7 +434,7 @@ auto Lexer::keywords() -> const std::map<std::string, Token::Type>& {
       {"if", Token::Type::IF},       {"else", Token::Type::ELSE},     {"for", Token::Type::FOR},
       {"while", Token::Type::WHILE}, {"return", Token::Type::RETURN}, {"exit", Token::Type::EXIT},
       {"print", Token::Type::PRINT}, {"type", Token::Type::TYPE},     {"func", Token::Type::FUNC},
-  };
+      {"main", Token::Type::MAIN}};
   return KEYWORDS;
 }
 }  // namespace kuso

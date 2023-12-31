@@ -54,7 +54,7 @@ class Lexer {
   [[nodiscard]] auto replace_gt_lt(bool) -> Token;
   [[nodiscard]] auto replace_not_equal() -> Token;
 
-  void               skip_comments();
+  void               skip_comments(bool);
   [[nodiscard]] auto parse_identifier() noexcept -> Token;
   [[nodiscard]] auto parse_number() noexcept -> Token;
   [[nodiscard]] auto parse_string() noexcept -> Token;
@@ -68,6 +68,11 @@ class Lexer {
       _col++;
     }
     _iter++;
+
+    if (_iter >= _source.end()) {
+      _iter = _source.end();
+    }
+
     return _iter < _source.end();
   }
 };

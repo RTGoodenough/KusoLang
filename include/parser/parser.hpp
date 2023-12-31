@@ -61,6 +61,7 @@ class Parser {
   [[nodiscard]] auto parse_variable(Token&, Tokens&) -> std::unique_ptr<AST::Variable>;
   [[nodiscard]] auto parse_call(Token&, Tokens&) -> std::unique_ptr<AST::Call>;
 
+  [[nodiscard]] auto parse_main(Token&, Tokens&) -> std::unique_ptr<AST::Main>;
   [[nodiscard]] auto parse_func(Token&, Tokens&) -> std::unique_ptr<AST::Func>;
 
   [[nodiscard]] auto parse_type(Token&, Tokens&) -> std::unique_ptr<AST::Type>;

@@ -66,6 +66,7 @@ class AST {
   struct Terminal;
   struct Variable;
 
+  struct Main;
   struct Func;
   struct Call;
 
@@ -260,6 +261,20 @@ struct AST::Variable {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for main function
+ * 
+ */
+struct AST::Main {
+  std::vector<Statement> body;
+
+  [[nodiscard]] auto to_string(int) const -> std::string;
+};
+
+/**
+ * @brief AST node for function definitions
+ * 
+ */
 struct AST::Func {
   std::string                               name;
   std::vector<std::unique_ptr<Declaration>> args;
@@ -269,6 +284,10 @@ struct AST::Func {
   [[nodiscard]] auto to_string(int) const -> std::string;
 };
 
+/**
+ * @brief AST node for function calls
+ * 
+ */
 struct AST::Call {
   std::string                              name;
   std::vector<std::unique_ptr<Expression>> args;
@@ -326,7 +345,8 @@ struct AST::Type {
 struct AST::Statement {
   std::variant<std::unique_ptr<Type>, std::unique_ptr<If>, std::unique_ptr<Exit>, std::unique_ptr<Assignment>,
                std::unique_ptr<Declaration>, std::unique_ptr<Print>, std::unique_ptr<Func>,
-               std::unique_ptr<Call>, std::unique_ptr<Return>, std::unique_ptr<While>, std::nullptr_t>
+               std::unique_ptr<Main>, std::unique_ptr<Call>, std::unique_ptr<Return>, std::unique_ptr<While>,
+               std::nullptr_t>
       statement;
 
   [[nodiscard]] auto to_string(int) const -> std::string;

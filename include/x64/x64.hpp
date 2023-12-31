@@ -16,32 +16,38 @@
 
 namespace kuso::x64 {
 /**
-  * @brief Byte size
+  * @brief x86_64 word sizes
   * 
   */
 enum Size { BYTE = 1, WORD = 2, DWORD = 4, QWORD = 8 };
+
+/**
+ * @brief x86_64 Register count
+ * 
+ */
+constexpr size_t REGISTER_COUNT = 15;
 
 /**
  * @brief x86_64 Registers 
  * 
  */
 enum class Register {
-  RAX,
-  RBX,
-  RCX,
-  RDX,
-  RSI,
-  RDI,
+  RAX = 0,
+  RBX = 1,
+  RCX = 2,
+  RDX = 3,
+  RSI = 4,
+  RDI = 5,
+  RBP = 6,
+  R8 = 7,
+  R9 = 8,
+  R10 = 9,
+  R11 = 10,
+  R12 = 11,
+  R13 = 12,
+  R14 = 13,
+  R15 = 14,
   RSP,
-  RBP,
-  R8,
-  R9,
-  R10,
-  R11,
-  R12,
-  R13,
-  R14,
-  R15,
   NONE,
   EAX,
   EBX,
@@ -92,6 +98,11 @@ enum class Register {
   R14B,
   R15B
 };
+
+/**
+ * @brief x86_64 Operations
+ * 
+ */
 enum class Op {
   MOV,
   MOVL,
@@ -100,6 +111,7 @@ enum class Op {
   MUL,
   IMUL,
   DIV,
+  IDIV,
   MOD,
   AND,
   OR,
@@ -345,6 +357,8 @@ struct Literal {
       return "imul";
     case Op::DIV:
       return "div";
+    case Op::IDIV:
+      return "idiv";
     case Op::MOD:
       return "mod";
     case Op::AND:

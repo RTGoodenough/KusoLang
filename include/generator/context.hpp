@@ -15,7 +15,9 @@
 #include <stack>
 #include <string>
 
+#include "generator/types.hpp"
 #include "generator/variables.hpp"
+
 #include "x64/addressing.hpp"
 
 namespace kuso {
@@ -28,7 +30,5 @@ struct Context {
   x64::Address                    stack;
   std::map<std::string, Variable> variables;
   int                             currVariable;
-  std::map<std::string, int>      typeIDs;
-  std::map<int, Type_t>           types;
 };
 }  // namespace kuso

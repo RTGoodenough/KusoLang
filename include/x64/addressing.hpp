@@ -37,9 +37,15 @@ struct Address {
     throw std::runtime_error("Invalid Address");
   }
 
-  [[nodiscard]] auto operator+(int off) const -> Address {
+  /**
+ * @brief Adds an offset to the displacement of the address
+ * 
+ * @param offset 
+ * @return Address 
+ */
+  [[nodiscard]] auto operator+(int offset) const -> Address {
     auto addr = *this;
-    addr.disp += off;
+    addr.disp += offset;
     return addr;
   }
 };

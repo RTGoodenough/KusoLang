@@ -11,7 +11,11 @@
 
 namespace kuso {
 auto ContextPass::pass(const AST& ast) -> bool {
-  new_context("global");
+  _contexts.emplace("global",
+                    Context{.size = 0,
+                            .stack = x64::Address{x64::Address::Mode::DIRECT, x64::Register::RSP, 0},
+                            .variables = {},
+                            .currVariable = 2});
   try {
     for (const auto& statement : ast) {
       context_statement(statement);
@@ -26,7 +30,7 @@ auto ContextPass::pass(const AST& ast) -> bool {
 
 void ContextPass::context_statement(const AST::Statement& statement) {
   belt::overloaded_visit(
-      statement,
+      statement.statement,
       [&](const std::unique_ptr<AST::Declaration>& declaration) { context_declaration(*declaration); },
       [&](const std::unique_ptr<AST::If>& ifStatement) { context_if(*ifStatement); },
       [&](const std::unique_ptr<AST::Type>& type) { context_type(*type); },
@@ -87,9 +91,26 @@ void ContextPass::context_func(const AST::Func& func) {
   leave_context();
 }
 
-void ContextPass::context_type(const AST::Type& type) {}
+void ContextPass::context_type(const AST::Type&) {}
 
 void ContextPass::context_return(const AST::Return&) { leave_context(); }
+
+auto ContextPass::get_context(const std::string& name) const -> const Context& {
+  auto iter = _contexts.find(name);
+  if (iter == _contexts.end()) {
+    throw ContextError(fmt::format("Unknown Context {}", name));
+  }
+
+  return iter->second;
+}
+auto ContextPass::get_context(const std::string& name) -> Context& {
+  auto iter = _contexts.find(name);
+  if (iter == _contexts.end()) {
+    throw ContextError(fmt::format("Unknown Context {}", name));
+  }
+
+  return iter->second;
+}
 
 // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% HELPERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

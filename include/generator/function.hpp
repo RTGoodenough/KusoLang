@@ -9,5 +9,6 @@ namespace kuso {
 struct Function {
   std::string                             label;
   std::reference_wrapper<const AST::Func> body;
+  size_t                                  argCnt;
 };
 }  // namespace kuso

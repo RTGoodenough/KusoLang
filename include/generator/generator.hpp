@@ -18,6 +18,7 @@
 #include <belt/file.hpp>
 
 #include "generator/context_pass.hpp"
+#include "generator/first_pass.hpp"
 #include "parser/ast.hpp"
 
 #include "context.hpp"
@@ -44,28 +45,29 @@ class Generator {
   void generate(const AST&);
 
  private:
-  belt::File          _outputFile;
-  ContextPass         _contextpass;
+  belt::File _outputFile;
+
+  FirstPass _firstpass;
+
   std::stack<Context> _contexts;
 
+  std::stack<std::string>         _currentFunction;
   std::map<std::string, Function> _functions;
-  std::vector<std::string>        _labels;
 
   std::map<std::string, std::string> _string_names;
   std::map<std::string, std::string> _string_values;
 
   std::string _output_code;
-  std::string _output_data;
 
-  size_t _label_count;
+  size_t _label_count{0};
+
+  bool _exprInReg{false};
 
   void init_context();
-  void init_data();
 
   void enter_context(int64_t);
+  void enter_context(const std::string&);
   void leave_context();
-
-  void add_data(const std::string&, const std::string&);
 
   [[nodiscard]] auto new_label() -> std::string;
 
@@ -103,8 +105,6 @@ class Generator {
 
   void generate_while(const AST::While&);
 
-  void generate_type(const AST::Type&);
-
   void generate_expression(const AST::Expression&);
   void generate_expression(const AST::Terminal&);
   void generate_expression(const AST::Equality&);
@@ -118,6 +118,7 @@ class Generator {
 
   void generate_func(const AST::Func&);
 
+  void generate_main(const AST::Main&);
   void generate_call(const AST::Call&);
   void generate_parameters(const AST::Call&);
   void generate_return(const AST::Return&);
@@ -130,6 +131,10 @@ class Generator {
   [[nodiscard]] static auto get_identifier(const AST::Declaration&) -> const std::string&;
   [[nodiscard]] static auto get_identifier(const AST::Assignment&) -> const std::string&;
   [[nodiscard]] static auto get_decl_type(const AST::Declaration&) -> const std::string&;
+
+  [[nodiscard]] auto get_check_func_info(const std::string&) -> const FirstPass::FuncInfo&;
+  [[nodiscard]] auto get_check_type(const std::string&) -> Type&;
+  [[nodiscard]] auto get_check_type(TypeID) -> Type&;
 
   [[nodiscard]] inline auto context() -> Context& { return _contexts.top(); }
   [[nodiscard]] inline auto context() const -> const Context& { return _contexts.top(); }
