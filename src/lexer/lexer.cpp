@@ -235,7 +235,12 @@ auto Lexer::parse_token() noexcept -> Token {
       break;
     default: {
       if (std::isalpha(*_iter)) {
-        return parse_identifier();
+        auto token = parse_identifier();
+
+        if (token.type == Token::Type::ASM) {
+          return parse_asm();
+        }
+        return token;
       }
       if (std::isdigit(*_iter)) {
         return parse_number();
@@ -313,6 +318,34 @@ auto Lexer::parse_number() noexcept -> Token {
   }
 
   return Token(Token::Type::NUMBER, _line, _col, value);
+}
+
+auto Lexer::parse_asm() noexcept -> Token {
+  // std::cout << "parse_asm\n";
+  // TODO(tom): adding character by character to a string is slow
+  std::string value;
+  while (std::iswspace(*_iter)) {
+    if (!next()) {
+      return Token(Token::Type::INVALID, _line, _col, value);
+    }
+  }
+
+  if (*_iter != '{') {
+    return Token(Token::Type::INVALID, _line, _col, value);
+  }
+
+  next();
+  while ((_iter < _source.end()) && *_iter != '}') {
+    value += *_iter;
+    next();
+  }
+
+  if (_iter == _source.end()) {
+    return Token(Token::Type::INVALID, _line, _col, value);
+  }
+
+  next();
+  return Token(Token::Type::ASM, _line, _col, value);
 }
 
 /**
@@ -433,8 +466,8 @@ auto Lexer::keywords() -> const std::map<std::string, Token::Type>& {
   static const std::map<std::string, Token::Type> KEYWORDS{
       {"if", Token::Type::IF},       {"else", Token::Type::ELSE},     {"for", Token::Type::FOR},
       {"while", Token::Type::WHILE}, {"return", Token::Type::RETURN}, {"exit", Token::Type::EXIT},
-      {"print", Token::Type::PRINT}, {"type", Token::Type::TYPE},     {"func", Token::Type::FUNC},
-      {"main", Token::Type::MAIN}};
+      {"type", Token::Type::TYPE},   {"func", Token::Type::FUNC},     {"main", Token::Type::MAIN},
+      {"asm", Token::Type::ASM}};
   return KEYWORDS;
 }
 }  // namespace kuso

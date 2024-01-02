@@ -63,9 +63,9 @@ void Generator::generate(const AST::Statement& statement) {
       [&](const std::unique_ptr<AST::Declaration>& declaration) { generate_declaration(*declaration); },
       [&](const std::unique_ptr<AST::Assignment>& assignment) { generate_assignment(*assignment); },
       [&](const std::unique_ptr<AST::Exit>& exit) { generate_exit(*exit); },
-      [&](const std::unique_ptr<AST::Print>& print) { generate_print(*print); },
       [&](const std::unique_ptr<AST::If>& ifStatement) { generate_if(*ifStatement); },
       [&](const std::unique_ptr<AST::Main>& main) { generate_main(*main); },
+      [&](const std::unique_ptr<AST::ASM>& asm_) { generate_inline_asm(*asm_); },
       [&](const std::unique_ptr<AST::Type>&) {},
       [&](const std::unique_ptr<AST::While>& whileStatement) { generate_while(*whileStatement); },
       [&](const std::unique_ptr<AST::Func>& func) { generate_func(*func); },
@@ -152,6 +152,8 @@ void Generator::generate_func(const AST::Func& func) {
   _currentFunction.pop();
 }
 
+void Generator::generate_inline_asm(const AST::ASM& ASM) { emit(ASM.code); }
+
 void Generator::generate_call(const AST::Call& call) {
   auto funcIter = _functions.find(call.name);
   if (funcIter == _functions.end()) {
@@ -185,6 +187,7 @@ void Generator::generate_return(const AST::Return& ret) {
   if (ret.value) {
     generate_expression(*ret.value);
   }
+
   leave_context();
   emit(x64::Op::RET);
 }
@@ -375,19 +378,6 @@ void Generator::generate_exit(const AST::Exit& exit) {
   }
   emit(x64::Op::MOV, x64::Register::RDI, x64::Register::RAX);
   emit(x64::Op::MOV, x64::Register::RAX, x64::Literal{lnx::Syscall::EXIT});
-  emit(x64::Op::SYSCALL);
-}
-
-/**
- * @brief Generates x64 assembly from a return statement
- * 
- * @param returnStatement Return to generate from
- */
-void Generator::generate_print(const AST::Print& print) {
-  generate_expression(*print.value);
-  emit(x64::Op::MOV, x64::Register::RSI, x64::Register::RAX);
-  emit(x64::Op::MOV, x64::Register::RAX, x64::Literal{lnx::Syscall::WRITE});
-  emit(x64::Op::MOV, x64::Register::RDI, x64::Literal{1});
   emit(x64::Op::SYSCALL);
 }
 

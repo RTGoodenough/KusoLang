@@ -59,6 +59,7 @@ class Lexer {
   [[nodiscard]] auto parse_number() noexcept -> Token;
   [[nodiscard]] auto parse_string() noexcept -> Token;
   [[nodiscard]] auto parse_token() noexcept -> Token;
+  [[nodiscard]] auto parse_asm() noexcept -> Token;
 
   inline constexpr auto next() -> bool {
     if (*_iter == '\n') {

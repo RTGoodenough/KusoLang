@@ -37,8 +37,8 @@ void ContextPass::context_statement(const AST::Statement& statement) {
       [&](const std::unique_ptr<AST::While>& whileStatement) { context_while(*whileStatement); },
       [&](const std::unique_ptr<AST::Func>& func) { context_func(*func); },
       [&](const std::unique_ptr<AST::Return>& return_) { context_return(*return_); },
-      [&](const std::unique_ptr<AST::Exit>&) {}, [&](const std::unique_ptr<AST::Assignment>&) {},
-      [&](const std::unique_ptr<AST::Print>&) {}, [&](const std::unique_ptr<AST::Call>&) {},
+      [&](const std::unique_ptr<AST::ASM>&) {}, [&](const std::unique_ptr<AST::Exit>&) {},
+      [&](const std::unique_ptr<AST::Assignment>&) {}, [&](const std::unique_ptr<AST::Call>&) {},
       [](std::nullptr_t) {});
 }
 

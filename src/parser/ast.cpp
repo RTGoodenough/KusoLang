@@ -29,12 +29,12 @@ auto AST::to_string() const -> std::string {
         [&result](const std::unique_ptr<Assignment>& assignment) { result += assignment->to_string(0); },
         [&result](const std::unique_ptr<Type>& type) { result += type->to_string(0); },
         [&result](const std::unique_ptr<If>& if_) { result += if_->to_string(0); },
-        [&result](const std::unique_ptr<Print>& print) { result += print->value->to_string(0); },
-        [&result](const std::unique_ptr<Return>& return_) { result += return_->value->to_string(0); },
-        [&result](const std::unique_ptr<Exit>& exit) { result += exit->value->to_string(0); },
+        [&result](const std::unique_ptr<Return>& return_) { result += return_->to_string(0); },
+        [&result](const std::unique_ptr<Exit>& exit) { result += exit->to_string(0); },
         [&result](const std::unique_ptr<Call>& call) { result += call->to_string(0); },
         [&result](const std::unique_ptr<Func>& func) { result += func->to_string(0); },
         [&result](const std::unique_ptr<Main>& main) { result += main->to_string(0); },
+        [&result](const std::unique_ptr<AST::ASM>& ASM) { result += ASM->to_string(0); },
         [&result](const std::unique_ptr<Declaration>& declaration) { result += declaration->to_string(0); },
         [&result](const std::unique_ptr<While>& while_) { result += while_->to_string(0); },
         [&result](std::nullptr_t) { result += "null\n"; });
@@ -150,16 +150,6 @@ auto AST::Exit::to_string(int indent) const -> std::string {
 }
 
 /**
- * @brief returns the string representation of the print
- * 
- * @param indent spaces to indent
- * @return std::string string representation
- */
-auto AST::Print::to_string(int indent) const -> std::string {
-  return fmt::format("\n{: >{}}Print:", "", indent) + (value ? value->to_string(indent + 1) : "");
-}
-
-/**
  * @brief returns the string representation of the if
  * 
  * @param indent spaces to indent
@@ -190,12 +180,12 @@ auto AST::Statement::to_string(int indent) const -> std::string {
       statement, [&](const std::unique_ptr<Assignment>& assignment) { return assignment->to_string(indent); },
       [&](const std::unique_ptr<Type>& type) { return type->to_string(indent); },
       [&](const std::unique_ptr<If>& if_) { return if_->to_string(indent); },
-      [&](const std::unique_ptr<Print>& print) { return print->value->to_string(indent); },
-      [&](const std::unique_ptr<Exit>& exit) { return exit->value->to_string(indent); },
+      [&](const std::unique_ptr<Exit>& exit) { return exit->to_string(indent); },
       [&](const std::unique_ptr<Declaration>& declaration) { return declaration->to_string(indent); },
       [&](const std::unique_ptr<Func>& func) { return func->to_string(indent); },
       [&](const std::unique_ptr<Call>& call) { return call->to_string(indent); },
-      [&](const std::unique_ptr<Return>& return_) { return return_->value->to_string(indent); },
+      [&](const std::unique_ptr<Return>& return_) { return return_->to_string(indent); },
+      [&](const std::unique_ptr<AST::ASM>& ASM) { return ASM->to_string(indent); },
       [&](const std::unique_ptr<Main>& main) { return main->to_string(indent); },
       [&](const std::unique_ptr<While>& while_) { return while_->to_string(indent); },
       [&](std::nullptr_t) { return std::string("null\n"); });
@@ -317,6 +307,14 @@ auto AST::Func::to_string(int indent) const -> std::string {
   }
   return ret;
 }
+
+/**
+ * @brief returns the string representation of the string
+ * 
+ * @param indent spaces to indent
+ * @return std::string string representation
+ */
+auto AST::ASM::to_string(int indent) const -> std::string { return fmt::format("\n{: >{}}ASM:", "", indent); }
 
 /**
  * @brief returns the string representation of the terminal

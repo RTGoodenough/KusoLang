@@ -53,7 +53,6 @@ class AST {
 
   struct Declaration;
   struct Return;
-  struct Print;
   struct Assignment;
 
   struct Expression;
@@ -69,6 +68,7 @@ class AST {
   struct Main;
   struct Func;
   struct Call;
+  struct ASM;
 
   struct Type;
   struct Attribute;
@@ -144,16 +144,6 @@ struct AST::Return {
  */
 struct AST::Assignment {
   std::unique_ptr<Variable>   dest;
-  std::unique_ptr<Expression> value;
-
-  [[nodiscard]] auto to_string(int) const -> std::string;
-};
-
-/**
- * @brief AST node for print statements
- * 
- */
-struct AST::Print {
   std::unique_ptr<Expression> value;
 
   [[nodiscard]] auto to_string(int) const -> std::string;
@@ -285,6 +275,15 @@ struct AST::Func {
 };
 
 /**
+ * @brief AST node for inline assembly
+ * 
+ */
+struct AST::ASM {
+  std::string        code;
+  [[nodiscard]] auto to_string(int) const -> std::string;
+};
+
+/**
  * @brief AST node for function calls
  * 
  */
@@ -344,8 +343,8 @@ struct AST::Type {
  */
 struct AST::Statement {
   std::variant<std::unique_ptr<Type>, std::unique_ptr<If>, std::unique_ptr<Exit>, std::unique_ptr<Assignment>,
-               std::unique_ptr<Declaration>, std::unique_ptr<Print>, std::unique_ptr<Func>,
-               std::unique_ptr<Main>, std::unique_ptr<Call>, std::unique_ptr<Return>, std::unique_ptr<While>,
+               std::unique_ptr<Declaration>, std::unique_ptr<Func>, std::unique_ptr<Main>,
+               std::unique_ptr<ASM>, std::unique_ptr<Call>, std::unique_ptr<Return>, std::unique_ptr<While>,
                std::nullptr_t>
       statement;
 
@@ -357,7 +356,6 @@ struct AST::Statement {
   explicit Statement(std::unique_ptr<Assignment> assignment) : statement(std::move(assignment)) {}
   explicit Statement(std::unique_ptr<Declaration> declaration) : statement(std::move(declaration)) {}
   explicit Statement(std::unique_ptr<Type> type) : statement(std::move(type)) {}
-  explicit Statement(std::unique_ptr<Print> print) : statement(std::move(print)) {}
   explicit Statement(std::unique_ptr<If> if_) : statement(std::move(if_)) {}
   explicit Statement(std::unique_ptr<While> while_) : statement(std::move(while_)) {}
 };

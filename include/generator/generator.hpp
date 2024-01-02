@@ -99,7 +99,6 @@ class Generator {
   void generate_assignment(const AST::Assignment&);
   void generate_declaration(const AST::Declaration&);
   void generate_exit(const AST::Exit&);
-  void generate_print(const AST::Print&);
 
   void generate_if(const AST::If&);
 
@@ -117,6 +116,7 @@ class Generator {
   void generate_expression(const Token&);
 
   void generate_func(const AST::Func&);
+  void generate_inline_asm(const AST::ASM&);
 
   void generate_main(const AST::Main&);
   void generate_call(const AST::Call&);

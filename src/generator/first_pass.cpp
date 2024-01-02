@@ -3,12 +3,16 @@
 #include "generator/first_pass.hpp"
 
 #include <belt/overload.hpp>
+#include <optional>
 
 #include "logging/logging.hpp"
 
 namespace kuso {
 
-FirstPass::FirstPass() { _types.add_type("int", Type{x64::Size::QWORD, std::nullopt}); }
+FirstPass::FirstPass() {
+  _types.add_type("none", Type{0, std::nullopt});
+  _types.add_type("int", Type{x64::Size::QWORD, std::nullopt});
+}
 
 /**
  * @brief Handles the first pass of the types
@@ -26,7 +30,7 @@ auto FirstPass::types_pass(const AST& ast) -> bool {
           [&](const std::unique_ptr<AST::Declaration>&) {}, [&](const std::unique_ptr<AST::If>&) {},
           [&](const std::unique_ptr<AST::While>&) {}, [&](const std::unique_ptr<AST::Func>&) {},
           [&](const std::unique_ptr<AST::Return>&) {}, [&](const std::unique_ptr<AST::Exit>&) {},
-          [&](const std::unique_ptr<AST::Assignment>&) {}, [&](const std::unique_ptr<AST::Print>&) {},
+          [&](const std::unique_ptr<AST::Assignment>&) {}, [&](const std::unique_ptr<AST::ASM>&) {},
           [&](const std::unique_ptr<AST::Main>&) { hasMain = true; },
           [&](const std::unique_ptr<AST::Call>&) {}, [](std::nullptr_t) {});
     }
@@ -59,10 +63,10 @@ auto FirstPass::function_pass(const AST& ast) -> bool {
           [&](const std::unique_ptr<AST::While>& whileStatement) {
             pass_expression(*whileStatement->condition);
           },
+          [&](const std::unique_ptr<AST::ASM>&) {},
           [&](const std::unique_ptr<AST::Func>& func) { pass_func(*func); },
           [&](const std::unique_ptr<AST::Return>&) {}, [&](const std::unique_ptr<AST::Exit>&) {},
           [&](const std::unique_ptr<AST::Assignment>& assignment) { pass_expression(*assignment->value); },
-          [&](const std::unique_ptr<AST::Print>&) {},
           [&](const std::unique_ptr<AST::Main>& main) { pass_main(*main); },
           [&](const std::unique_ptr<AST::Call>&) {}, [](std::nullptr_t) {});
     }
@@ -156,10 +160,10 @@ void FirstPass::pass_func(const AST::Func& func) {
         [&](const std::unique_ptr<AST::While>& whileStatement) {
           pass_expression(*whileStatement->condition);
         },
-        [&](const std::unique_ptr<AST::Func>&) {}, [&](const std::unique_ptr<AST::Return>&) {},
-        [&](const std::unique_ptr<AST::Exit>&) {},
+        [&](const std::unique_ptr<AST::ASM>&) {}, [&](const std::unique_ptr<AST::Func>&) {},
+        [&](const std::unique_ptr<AST::Return>&) {}, [&](const std::unique_ptr<AST::Exit>&) {},
         [&](const std::unique_ptr<AST::Assignment>& assignment) { pass_expression(*assignment->value); },
-        [&](const std::unique_ptr<AST::Print>&) {}, [&](const std::unique_ptr<AST::Main>&) {},
+        [&](const std::unique_ptr<AST::Main>&) {},
         [&](const std::unique_ptr<AST::Call>& call) { pass_call(*call); }, [](std::nullptr_t) {});
   }
 }
@@ -190,11 +194,11 @@ void FirstPass::pass_main(const AST::Main& main) {
         [&](const std::unique_ptr<AST::While>& whileStatement) {
           pass_expression(*whileStatement->condition);
         },
-        [&](const std::unique_ptr<AST::Func>&) {}, [&](const std::unique_ptr<AST::Return>&) {},
-        [&](const std::unique_ptr<AST::Exit>&) {},
+        [&](const std::unique_ptr<AST::ASM>&) {}, [&](const std::unique_ptr<AST::Func>&) {},
+        [&](const std::unique_ptr<AST::Return>&) {}, [&](const std::unique_ptr<AST::Exit>&) {},
         [&](const std::unique_ptr<AST::Assignment>& assignment) { pass_expression(*assignment->value); },
-        [&](const std::unique_ptr<AST::Print>&) {}, [&](const std::unique_ptr<AST::Main>&) {},
-        [&](const std::unique_ptr<AST::Call>&) {}, [](std::nullptr_t) {});
+        [&](const std::unique_ptr<AST::Main>&) {}, [&](const std::unique_ptr<AST::Call>&) {},
+        [](std::nullptr_t) {});
   }
 }
 

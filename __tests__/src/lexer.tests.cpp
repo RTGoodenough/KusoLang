@@ -291,6 +291,23 @@ TEST(Lexer, Keywords) {
   ASSERT_EQ(tokens[8].type, kuso::Token::Type::END_OF_FILE);
 }
 
+TEST(Lexer, ASM) {
+  std::string input(
+      "asm {\n"
+      "  mov rax, 0\n"
+      "  ret\n"
+      "}");
+  kuso::Lexer              lexer;
+  std::vector<kuso::Token> tokens = lexer.tokenize(input);
+  ASSERT_EQ(tokens.size(), 2);
+  ASSERT_EQ(tokens[0].type, kuso::Token::Type::ASM);
+  ASSERT_EQ(tokens[1].type, kuso::Token::Type::END_OF_FILE);
+  ASSERT_EQ(tokens[0].value,
+            "\n"
+            "  mov rax, 0\n"
+            "  ret\n");
+}
+
 TEST(Lexer, NumberToken) {
   std::string              input("12345");
   kuso::Lexer              lexer;

@@ -130,6 +130,9 @@ auto Parser::parse_statement(Token& token, Tokens& tokens) -> AST::Statement {
       }
       syntax_error(token, Token(Token::Type::COLON));
       break;
+    case Token::Type::ASM:
+      statement.statement = parse_asm(token, tokens);
+      break;
     case Token::Type::WHILE:
       statement.statement = parse_while(token, tokens);
       break;
@@ -147,9 +150,6 @@ auto Parser::parse_statement(Token& token, Tokens& tokens) -> AST::Statement {
       break;
     case Token::Type::FUNC:
       statement.statement = parse_func(token, tokens);
-      break;
-    case Token::Type::PRINT:
-      statement.statement = parse_print(token, tokens);
       break;
     case Token::Type::IF:
       statement.statement = parse_if(token, tokens);
@@ -571,6 +571,20 @@ auto Parser::parse_func(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Fu
 }
 
 /**
+ * @brief Parses an inline assembly statement
+ * 
+ * @param token token found
+ * @param tokens list of tokens
+ * @return std::unique_ptr<AST::ASM> 
+ */
+auto Parser::parse_asm(Token& token, Tokens&) -> std::unique_ptr<AST::ASM> {
+  // std::cout << "parse_asm\n";
+  auto asmStatement = std::make_unique<AST::ASM>();
+  asmStatement->code = token.value;
+  return asmStatement;
+}
+
+/**
  * @brief Parses a function call
  * 
  * @param token token found
@@ -632,25 +646,13 @@ auto Parser::parse_return(Token& token, Tokens& tokens) -> std::unique_ptr<AST::
   // std::cout << "parse_return\n";
   auto returnStatement = std::make_unique<AST::Return>();
 
+  if (_lookahead.type == Token::Type::SEMI_COLON) {
+    return returnStatement;
+  }
+
   returnStatement->value = parse_expression(token, tokens);
 
   return returnStatement;
-}
-
-/**
- * @brief Parses a print statement
- * 
- * @param token token found
- * @param tokens list of tokens
- * @return std::unique_ptr<AST::Print> 
- */
-auto Parser::parse_print(Token& token, Tokens& tokens) -> std::unique_ptr<AST::Print> {
-  // std::cout << "parse_print\n";
-  auto print = std::make_unique<AST::Print>();
-
-  print->value = parse_expression(token, tokens);
-
-  return print;
 }
 
 /**
