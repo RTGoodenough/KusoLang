@@ -38,6 +38,12 @@
 
 # Build
 build
-temp
 morasu
 kuso_test
+
+# Temporary
+*.tmp
+temp
+
+# Build
+build
