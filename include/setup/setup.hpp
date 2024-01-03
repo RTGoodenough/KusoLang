@@ -46,7 +46,7 @@ inline auto initialize(int argc, const char** argv) -> bool {
   }
 
   if (pirate::Args::has("s")) {
-    kuso::Logging::set_level(kuso::Logging::Level::NONE);
+    kuso::Logging::set_level(kuso::Logging::Level::ERROR);
   }
 
   return true;
