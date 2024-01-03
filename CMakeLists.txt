@@ -1,64 +1,67 @@
-cmake_minimum_required(VERSION 3.17)
-set(PROJECT_NAME KusoLang)
-project(${PROJECT_NAME} CXX)
+cmake_minimum_required(VERSION 3.24)
 
-# Debug Mode option
-option(DEBUG_MODE "Debug Mode" OFF)
+option(DEBUG "Debug mode" OFF)
 
-# Set the C++ standard to C++20
+if(DEBUG)
+  message("Debug Build")
+  set(CMAKE_BUILD_TYPE Debug)
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -fsanitize=undefined -fno-sanitize-recover=all -fsanitize=float-divide-by-zero -fsanitize=float-cast-overflow -fno-sanitize=null")
+  set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -g -fsanitize=undefined -fno-sanitize-recover=all -fsanitize=float-divide-by-zero -fsanitize=float-cast-overflow -fno-sanitize=null")
+else()
+  message("Release Build")
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+project(morasu)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 
-# Set the source, include, dependencies and generated directories
-set(SRC_DIR ./src)
-set(INC_DIR ./include)
-set(GEN_DIR ./grammar/generated)
+set(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(deps_dir ${CMAKE_CURRENT_SOURCE_DIR}/deps)
 
-# Add executable
-add_executable(${PROJECT_NAME} ${SRC_DIR}/main.cpp)
-
-# Set the build type
-if(DEBUG_MODE)
-    set(CMAKE_BUILD_TYPE Debug)
-else()
-    set(CMAKE_BUILD_TYPE Release)
-endif()
-
-# Set the include directory
-target_include_directories(
-  ${PROJECT_NAME} 
-  PUBLIC
-  ${INC_DIR}
-)
-
-# Set the source directory
-add_subdirectory(${SRC_DIR})
-add_subdirectory(${GEN_DIR})
-
-# Setting up libraries
-
-message(STATUS "Setting Up ANTLR")
-LIST( APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/antlr_setup )
-include( ExternalAntlr4Cpp )
-link_directories( ${ANTLR4CPP_LIBS} )
-message(STATUS "Done Setting Up ANTLR")
-
-include(FetchContent)
-message(STATUS "Getting spdlog")
-FetchContent_Declare(spdlog URL https://github.com/gabime/spdlog/archive/v1.11.0.tar.gz)
-FetchContent_MakeAvailable(spdlog)
-message(STATUS "Done Getting spdlog")
-
-target_link_libraries(
+add_executable(
   ${PROJECT_NAME}
-  PUBLIC
-  spdlog::spdlog
-  antlr4_static
+  ${src_dir}/main.cpp
 )
 
+add_subdirectory(${src_dir})
+
+target_include_directories(
+  ${PROJECT_NAME}
+  PRIVATE
+  ${include_dir}
+)
+  
 include_directories(
   SYSTEM
-  ${GEN_DIR}
-  ${ANTLR4CPP_INCLUDE_DIRS}
+  ${deps_dir}
+)
+
+include(FetchContent)
+FetchContent_Declare(
+  fmt
+  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+  GIT_TAG 10.1.1
+)
+FetchContent_MakeAvailable(fmt)
+    
+add_subdirectory(${deps_dir}/pirate pirate)
+target_link_libraries(
+  ${PROJECT_NAME}
+  PRIVATE
+  pirate
+  fmt::fmt
+)
+
+target_compile_options(
+  ${PROJECT_NAME}
+  PRIVATE
+  -Wall
+  -Wextra
+  -Wpedantic
+  -Werror
 )

@@ -31,19 +31,13 @@
 *.out
 *.app
 
-# VS code
+# Testing
+pirate_tests
+
+# CMake
+build
+
+# VS Code
 .clangd
-.vscode
 .cache
-
-# Build
-build
-morasu
-kuso_test
-
-# Temporary
-*.tmp
-temp
-
-# Build
-build
+.vscode
