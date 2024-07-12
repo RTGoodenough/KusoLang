@@ -1,5 +1,7 @@
 # KusoLang
 
+! This is a personal project and not meant to be used in any actual capacity !
+
 A statically-typed, compiled programming language.
 
 Skip to the `KusoLang` section below to read the language syntax/semantics.
