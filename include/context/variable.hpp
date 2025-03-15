@@ -11,13 +11,9 @@
 
 #pragma once
 
-#include <map>
-#include <optional>
+#include "type_system/type_id.hpp"
 
 #include "x64/addressing.hpp"
-#include "x64/x64.hpp"
-
-#include "types.hpp"
 
 namespace kuso {
 
@@ -27,15 +23,7 @@ namespace kuso {
  */
 struct Variable {
   TypeID       type{0};
-  x64::Address location;
+  x64::Address location{};
 };
 
-/**
- * @brief Holds a string literal
- * 
- */
-struct String {
-  std::string name;
-  std::string value;
-};
 }  // namespace kuso

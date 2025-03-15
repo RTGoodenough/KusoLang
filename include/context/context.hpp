@@ -15,8 +15,9 @@
 #include <stack>
 #include <string>
 
-#include "generator/types.hpp"
-#include "generator/variables.hpp"
+#include "variable.hpp"
+
+#include "type_system/types.hpp"
 
 #include "x64/addressing.hpp"
 

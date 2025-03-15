@@ -13,13 +13,15 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "parser/ast.hpp"
+#include "type_id.hpp"
 
 namespace kuso {
-struct Function {
+struct Transform {
   std::string                             label;
   std::reference_wrapper<const AST::Func> body;
-  size_t                                  argCnt;
+  std::vector<TypeID>                     arguments;
 };
 }  // namespace kuso

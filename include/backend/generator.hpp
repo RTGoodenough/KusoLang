@@ -17,16 +17,13 @@
 #include <belt/class_macros.hpp>
 #include <belt/file.hpp>
 
-#include "generator/context_pass.hpp"
-#include "generator/first_pass.hpp"
 #include "parser/ast.hpp"
 
-#include "context.hpp"
-#include "function.hpp"
-#include "variables.hpp"
+#include "frontend/frontend.hpp"
 
-#include "x64/addressing.hpp"
-#include "x64/x64.hpp"
+#include "context/context.hpp"
+
+#include "type_system/types.hpp"
 
 namespace kuso {
 /**
@@ -47,7 +44,7 @@ class Generator {
  private:
   belt::File _outputFile;
 
-  FirstPass _firstpass;
+  Frontend _frontend;
 
   std::stack<Context> _contexts;
 
@@ -127,16 +124,24 @@ class Generator {
 
   [[nodiscard]] auto get_location(const AST::Variable&) -> x64::Address;
 
-  [[nodiscard]] static auto get_identifier(const AST::Terminal&) -> const std::string&;
-  [[nodiscard]] static auto get_identifier(const AST::Declaration&) -> const std::string&;
-  [[nodiscard]] static auto get_identifier(const AST::Assignment&) -> const std::string&;
-  [[nodiscard]] static auto get_decl_type(const AST::Declaration&) -> const std::string&;
+  [[nodiscard]] static auto get_identifier(const AST::Terminal&)
+      -> const std::string&;
+  [[nodiscard]] static auto get_identifier(const AST::Declaration&)
+      -> const std::string&;
+  [[nodiscard]] static auto get_identifier(const AST::Assignment&)
+      -> const std::string&;
+  [[nodiscard]] static auto get_decl_type(const AST::Declaration&)
+      -> const std::string&;
 
-  [[nodiscard]] auto get_check_func_info(const std::string&) -> const FirstPass::FuncInfo&;
+  [[nodiscard]] auto get_check_func_info(const std::string&)
+      -> const FirstPass::FuncInfo&;
   [[nodiscard]] auto get_check_type(const std::string&) -> Type&;
   [[nodiscard]] auto get_check_type(TypeID) -> Type&;
 
   [[nodiscard]] inline auto context() -> Context& { return _contexts.top(); }
-  [[nodiscard]] inline auto context() const -> const Context& { return _contexts.top(); }
+  [[nodiscard]] inline auto context() const -> const Context&
+  {
+    return _contexts.top();
+  }
 };
 }  // namespace kuso
